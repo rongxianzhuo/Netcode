@@ -84,7 +84,7 @@ namespace Netcode.Core
                         break;
                     }
                     case NetworkEvent.Type.Data:
-                        HandleNetworkData((NetworkAction) stream.ReadByte(), _serverConnection, stream);
+                        HandleNetworkData((NetworkAction) stream.ReadByte(), _serverConnection, ref stream);
                         break;
                     case NetworkEvent.Type.Disconnect:
                         _serverConnection = default;
@@ -98,12 +98,12 @@ namespace Netcode.Core
             }
         }
 
-        private void HandleNetworkData(NetworkAction action, NetworkConnection connection, DataStreamReader stream)
+        private void HandleNetworkData(NetworkAction action, NetworkConnection connection, ref DataStreamReader stream)
         {
             switch (action)
             {
                 case NetworkAction.SpawnObject:
-                    SpawnNetworkObject(stream.ReadInt(), stream.ReadInt());
+                    SpawnNetworkObject(ref stream);
                     break;
                 case NetworkAction.RemoveObject:
                     break;
@@ -112,12 +112,23 @@ namespace Netcode.Core
             }
         }
 
-        private void SpawnNetworkObject(int prefabId, int networkObjectId)
+        private void SpawnNetworkObject(ref DataStreamReader reader)
         {
-            var networkObject = NetworkPrefabLoader.Instantiate(prefabId);
+            var networkObject = NetworkPrefabLoader.Instantiate(reader.ReadInt());
             networkObject.name = "Client";
-            networkObject.NetworkObjectId = networkObjectId;
+            networkObject.NetworkObjectId = reader.ReadInt();
+            if (networkObject.NetworkBehaviours != null)
+            {
+                foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+                {
+                    foreach (var t in networkBehaviour.NetworkVariables)
+                    {
+                        t.Deserialize(ref reader);
+                    }
+                }
+            }
             _networkObjects.Add(networkObject);
+            networkObject.NetworkStart(true);
         }
     }
 }

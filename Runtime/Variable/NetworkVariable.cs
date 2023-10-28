@@ -3,7 +3,7 @@ using Unity.Collections;
 
 namespace Netcode.Variable
 {
-    public class NetworkVariable<T> where T : IEquatable<T>
+    public class NetworkVariable<T>: INetworkVariable where T : IEquatable<T>
     {
 
         private static readonly INetworkVariableSerializer<T> Serializer;
@@ -26,6 +26,7 @@ namespace Netcode.Variable
         static NetworkVariable()
         {
             NetworkVariable<int>.Serializer = new IntNetworkVariableSerializer();
+            NetworkVariable<float>.Serializer = new FloatNetworkVariableSerializer();
         }
 
         public NetworkVariable(T defaultValue)
@@ -33,15 +34,14 @@ namespace Netcode.Variable
             _value = defaultValue;
         }
 
-        public void Serialize(DataStreamWriter writer)
+        public void Serialize(ref DataStreamWriter writer)
         {
-            Serializer.Serialize(writer, _value);
+            Serializer.Serialize(ref writer, _value);
         }
 
-        public T Deserialize(DataStreamReader reader)
+        public void Deserialize(ref DataStreamReader reader)
         {
-            return Serializer.Deserialize(reader);
+            _value = Serializer.Deserialize(ref reader);
         }
-
     }
 }

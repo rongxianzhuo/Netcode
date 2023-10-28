@@ -1,4 +1,5 @@
 using Unity.Collections;
+using UnityEngine;
 
 namespace Netcode.Variable
 {
@@ -6,22 +7,35 @@ namespace Netcode.Variable
     public interface INetworkVariableSerializer<T>
     {
 
-        void Serialize(DataStreamWriter writer, T value);
+        void Serialize(ref DataStreamWriter writer, T value);
 
-        T Deserialize(DataStreamReader reader);
+        T Deserialize(ref DataStreamReader reader);
 
     }
 
     public class IntNetworkVariableSerializer : INetworkVariableSerializer<int>
     {
-        public void Serialize(DataStreamWriter writer, int value)
+        public void Serialize(ref DataStreamWriter writer, int value)
         {
             writer.WriteInt(value);
         }
 
-        public int Deserialize(DataStreamReader reader)
+        public int Deserialize(ref DataStreamReader reader)
         {
             return reader.ReadInt();
+        }
+    }
+
+    public class FloatNetworkVariableSerializer : INetworkVariableSerializer<float>
+    {
+        public void Serialize(ref DataStreamWriter writer, float value)
+        {
+            writer.WriteFloat(value);
+        }
+
+        public float Deserialize(ref DataStreamReader reader)
+        {
+            return reader.ReadFloat();
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Netcode.Variable;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using UnityEngine;
@@ -16,7 +17,7 @@ namespace Netcode.Core
         private readonly List<NetworkObject> _networkObjects = new List<NetworkObject>();
 
         private NetworkDriver _driver;
-        private int _allocateNetworkObjectId;
+        private int _allocateNetworkObjectId = 1;
 
         public bool IsRunning => _driver.IsCreated;
 
@@ -30,8 +31,20 @@ namespace Netcode.Core
                 writer.WriteByte((byte)NetworkAction.SpawnObject);
                 writer.WriteInt(networkObject.PrefabId);
                 writer.WriteInt(networkObject.NetworkObjectId);
+                if (networkObject.NetworkBehaviours != null)
+                {
+                    foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+                    {
+                        foreach (var t in networkBehaviour.NetworkVariables)
+                        {
+                            t.Serialize(ref writer);
+                        }
+                    }
+                }
                 _driver.EndSend(writer);
             }
+            _networkObjects.Add(networkObject);
+            networkObject.NetworkStart(false);
         }
 
         public void StopServer()
@@ -120,6 +133,7 @@ namespace Netcode.Core
             for (var i = _clientConnections.Count - 1; i >= 0; i--)
             {
                 var connection = _clientConnections[i];
+                
                 
                 NetworkEvent.Type cmd;
                 while ((cmd = _driver.PopEventForConnection(_clientConnections[i], out var stream)) != NetworkEvent.Type.Empty)
