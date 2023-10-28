@@ -1,0 +1,21 @@
+{
+  "name": "com.rongxianzhuo.netcode",
+  "version": "0.0.1",
+  "displayName": "Netcode",
+  "description": "A tiny netcode framework.",
+  "category": "Runtime",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "dependencies": {
+    "com.unity.transport": "2.1.0"
+  },
+  "keywords": [
+    "Netcode"
+  ],
+  "author": {
+    "name": "Rong Xianzhuo",
+    "email": "rongxianzhuo@gmail.com",
+    "url": "https://github.com/rongxianzhuo"
+  }
+}
