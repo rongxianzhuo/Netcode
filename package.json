@@ -1,6 +1,6 @@
 {
   "name": "com.rongxianzhuo.netcode",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "displayName": "Netcode",
   "description": "A tiny netcode framework.",
   "category": "Runtime",
@@ -9,7 +9,8 @@
   "licensesUrl": "",
   "dependencies": {
     "com.unity.transport": "2.1.0",
-    "com.unity.collections": "2.2.1"
+    "com.unity.collections": "2.2.1",
+    "com.unity.burst": "1.8.9"
   },
   "keywords": [
     "Netcode"
