@@ -12,6 +12,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.transport",
+            "expression": "2.1.0",
+            "define": "UTP_TRANSPORT_2_1_ABOVE"
+        }
+    ],
     "noEngineReferences": false
 }
