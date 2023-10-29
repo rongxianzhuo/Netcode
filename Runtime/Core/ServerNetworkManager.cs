@@ -69,41 +69,6 @@ namespace Netcode.Core
                 _pendingClientConnections.Add(c);
             }
 
-            for (var i = _pendingClientConnections.Count - 1; i >= 0; i--)
-            {
-                var connection = _pendingClientConnections[i];
-                
-                NetworkEvent.Type cmd;
-                while ((cmd = _driver.PopEventForConnection(connection, out var stream)) != NetworkEvent.Type.Empty)
-                {
-                    switch (cmd)
-                    {
-                        case NetworkEvent.Type.Data:
-                            if (stream.ReadByte() == 5)
-                            {
-                                _clientConnections.Add(connection);
-                                _pendingClientConnections.RemoveAt(i);
-                                var clientId = _clientConnections.Count;
-                                _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
-                                writer.WriteByte((byte)NetworkAction.ConnectionApproval);
-                                writer.WriteInt(clientId);
-                                _driver.EndSend(writer);
-                                ClientConnectEvent?.Invoke(clientId);
-                            }
-                            break;
-                        case NetworkEvent.Type.Disconnect:
-                            _pendingClientConnections.RemoveAt(i);
-                            break;
-                        case NetworkEvent.Type.Empty:
-                            break;
-                        case NetworkEvent.Type.Connect:
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                }
-            }
-
             for (var i = _clientConnections.Count - 1; i >= 0; i--)
             {
                 var connection = _clientConnections[i];
@@ -131,6 +96,42 @@ namespace Netcode.Core
 
             ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
             ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
+
+            for (var i = _pendingClientConnections.Count - 1; i >= 0; i--)
+            {
+                var connection = _pendingClientConnections[i];
+                
+                NetworkEvent.Type cmd;
+                while ((cmd = _driver.PopEventForConnection(connection, out var stream)) != NetworkEvent.Type.Empty)
+                {
+                    switch (cmd)
+                    {
+                        case NetworkEvent.Type.Data:
+                            if (stream.ReadByte() == 5)
+                            {
+                                _clientConnections.Add(connection);
+                                _pendingClientConnections.RemoveAt(i);
+                                var clientId = _clientConnections.Count;
+                                _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                                writer.WriteByte((byte)NetworkAction.ConnectionApproval);
+                                writer.WriteInt(clientId);
+                                _driver.EndSend(writer);
+                                ClientConnectEvent?.Invoke(clientId);
+                                ObjectManager.BroadcastAllNetworkObject(_driver, connection);
+                            }
+                            break;
+                        case NetworkEvent.Type.Disconnect:
+                            _pendingClientConnections.RemoveAt(i);
+                            break;
+                        case NetworkEvent.Type.Empty:
+                            break;
+                        case NetworkEvent.Type.Connect:
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+            }
         }
 
         private void HandleNetworkData(NetworkAction action, NetworkConnection connection, DataStreamReader reader)

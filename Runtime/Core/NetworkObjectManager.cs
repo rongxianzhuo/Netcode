@@ -22,7 +22,8 @@ namespace Netcode.Core
 
         internal void UpdateNetworkObject(ref DataStreamReader reader)
         {
-            var networkObject = _existObjects[reader.ReadInt()];
+            var networkId = reader.ReadInt();
+            var networkObject = _existObjects[networkId];
             var changeBehaviourCount = reader.ReadInt();
             while (changeBehaviourCount-- > 0)
             {
@@ -53,7 +54,7 @@ namespace Netcode.Core
                 }
             }
 
-            _existObjects[networkObject.NetworkObjectId] = networkObject;
+            _existObjects[networkObjectId] = networkObject;
             networkObject.NetworkStart(true, ownerId, networkObjectId);
         }
 
@@ -135,6 +136,30 @@ namespace Netcode.Core
                 }
             }
             _newObjects.Clear();
+        }
+
+        internal void BroadcastAllNetworkObject(NetworkDriver driver, NetworkConnection connection)
+        {
+            foreach (var networkObject in _existObjects.Values)
+            {
+                if (!connection.IsCreated) continue;
+                driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                writer.WriteByte((byte)NetworkAction.SpawnObject);
+                writer.WriteInt(networkObject.PrefabId);
+                writer.WriteInt(networkObject.OwnerId);
+                writer.WriteInt(networkObject.NetworkObjectId);
+                if (networkObject.NetworkBehaviours != null)
+                {
+                    foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+                    {
+                        foreach (var t in networkBehaviour.NetworkVariables)
+                        {
+                            t.Serialize(ref writer);
+                        }
+                    }
+                }
+                driver.EndSend(writer);
+            }
         }
 
         internal void Clear()

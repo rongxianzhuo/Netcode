@@ -9,21 +9,21 @@ namespace Netcode.Components
     public class NetworkTransform : NetworkBehaviour
     {
 
-        public readonly NetworkVariable<float> Test = new NetworkVariable<float>(default);
-        public readonly NetworkVariable<float> Joystick = new NetworkVariable<float>(default
+        public readonly NetworkVariable<Vector3> Test = new NetworkVariable<Vector3>(default);
+        public readonly NetworkVariable<Vector3> Joystick = new NetworkVariable<Vector3>(default
             , writePermission: VariablePermission.OwnerOnly);
 
         private void UpdatePosition()
         {
             if (IsClient)
             {
-                transform.position = new Vector3(Test.Value, 0, 0);
-                Joystick.Value = Input.GetAxis("Horizontal");
+                transform.position = Test.Value;
+                Joystick.Value = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
             }
             else
             {
                 Test.Value += Joystick.Value * Time.deltaTime;
-                transform.position = new Vector3(Test.Value, 0, 0);
+                transform.position = Test.Value;
             }
         }
 

@@ -1,5 +1,6 @@
 using System;
 using Unity.Collections;
+using UnityEngine;
 
 namespace Netcode.Variable
 {
@@ -10,6 +11,7 @@ namespace Netcode.Variable
         {
             NetworkVariable<int>.Serializer = new IntNetworkVariableSerializer();
             NetworkVariable<float>.Serializer = new FloatNetworkVariableSerializer();
+            NetworkVariable<Vector3>.Serializer = new Vector3NetworkVariableSerializer();
         }
 
         private static readonly INetworkVariableSerializer<T> Serializer;

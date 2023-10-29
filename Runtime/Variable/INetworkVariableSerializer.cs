@@ -38,4 +38,25 @@ namespace Netcode.Variable
             return reader.ReadFloat();
         }
     }
+
+    public class Vector3NetworkVariableSerializer : INetworkVariableSerializer<Vector3>
+    {
+        public void Serialize(ref DataStreamWriter writer, Vector3 value)
+        {
+            writer.WriteFloat(value.x);
+            writer.WriteFloat(value.y);
+            writer.WriteFloat(value.z);
+        }
+
+        public Vector3 Deserialize(ref DataStreamReader reader)
+        {
+            var vector3 = new Vector3
+            {
+                x = reader.ReadFloat(),
+                y = reader.ReadFloat(),
+                z = reader.ReadFloat()
+            };
+            return vector3;
+        }
+    }
 }
