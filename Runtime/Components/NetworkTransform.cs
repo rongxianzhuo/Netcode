@@ -11,15 +11,28 @@ namespace Netcode.Components
 
         public readonly NetworkVariable<float> Test = new NetworkVariable<float>(default);
 
+        private void UpdatePosition()
+        {
+            if (IsClient)
+            {
+                transform.position = new Vector3(Test.Value, 0, 0);
+            }
+            else
+            {
+                Test.Value = Mathf.Sin(Time.time);
+                transform.position = new Vector3(Test.Value, 0, 0);
+            }
+        }
+
         protected override void OnNetworkStart()
         {
             base.OnNetworkStart();
-            transform.position = new Vector3(Test.Value, 0, 0);
+            UpdatePosition();
         }
 
         private void Update()
         {
-            transform.position = new Vector3(Test.Value, 0, 0);
+            UpdatePosition();
         }
     }
 }

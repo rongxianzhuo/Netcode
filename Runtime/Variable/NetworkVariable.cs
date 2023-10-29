@@ -10,15 +10,12 @@ namespace Netcode.Variable
 
         private T _value;
 
-        public bool IsChanged { get; internal set; }
-
         public T Value
         {
             get => _value;
             set
             {
                 if (_value.Equals(value)) return;
-                IsChanged = true;
                 _value = value;
             }
         }

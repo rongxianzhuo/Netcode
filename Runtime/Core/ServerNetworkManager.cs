@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Netcode.Variable;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using UnityEngine;
@@ -12,40 +11,14 @@ namespace Netcode.Core
 
         public event Action ClientConnectEvent; 
         
+        public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
+        
         private readonly List<NetworkConnection> _clientConnections = new List<NetworkConnection>();
         private readonly List<NetworkConnection> _pendingClientConnections = new List<NetworkConnection>();
-        private readonly List<NetworkObject> _networkObjects = new List<NetworkObject>();
 
         private NetworkDriver _driver;
-        private int _allocateNetworkObjectId = 1;
 
         public bool IsRunning => _driver.IsCreated;
-
-        public void SpawnNetworkObject(NetworkObject networkObject)
-        {
-            networkObject.NetworkObjectId = _allocateNetworkObjectId++;
-            foreach (var connection in _clientConnections)
-            {
-                if (!connection.IsCreated) continue;
-                _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
-                writer.WriteByte((byte)NetworkAction.SpawnObject);
-                writer.WriteInt(networkObject.PrefabId);
-                writer.WriteInt(networkObject.NetworkObjectId);
-                if (networkObject.NetworkBehaviours != null)
-                {
-                    foreach (var networkBehaviour in networkObject.NetworkBehaviours)
-                    {
-                        foreach (var t in networkBehaviour.NetworkVariables)
-                        {
-                            t.Serialize(ref writer);
-                        }
-                    }
-                }
-                _driver.EndSend(writer);
-            }
-            _networkObjects.Add(networkObject);
-            networkObject.NetworkStart(false);
-        }
 
         public void StopServer()
         {
@@ -62,14 +35,8 @@ namespace Netcode.Core
                 connection.Disconnect(_driver);
             }
             _pendingClientConnections.Clear();
-
-            foreach (var networkObject in _networkObjects)
-            {
-                if (networkObject == null) continue;
-                UnityEngine.Object.Destroy(networkObject.gameObject);
-            }
-            _networkObjects.Clear();
             
+            ObjectManager.Clear();
             _driver.Dispose();
             _driver = default;
         }
@@ -155,15 +122,20 @@ namespace Netcode.Core
                     }
                 }
             }
+
+            ObjectManager.BroadcastUpdateNetworkObject(_driver, _clientConnections);
+            ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
         }
 
-        private void HandleNetworkData(NetworkAction action, NetworkConnection connection, DataStreamReader stream)
+        private void HandleNetworkData(NetworkAction action, NetworkConnection connection, DataStreamReader reader)
         {
             switch (action)
             {
                 case NetworkAction.SpawnObject:
                     break;
                 case NetworkAction.RemoveObject:
+                    break;
+                case NetworkAction.UpdateObject:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(action), action, null);

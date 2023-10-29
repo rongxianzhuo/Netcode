@@ -14,7 +14,7 @@ namespace Netcode.Core
 
         public int PrefabId => prefabId;
 
-        private NetworkBehaviour[] _networkBehaviours;
+        private NetworkBehaviour[] _networkBehaviours = Array.Empty<NetworkBehaviour>();
 
         public bool IsClient { get; private set; }
 
@@ -23,7 +23,6 @@ namespace Netcode.Core
         internal void NetworkStart(bool isClient)
         {
             IsClient = isClient;
-            if (_networkBehaviours == null) return;
             foreach (var behaviour in _networkBehaviours)
             {
                 behaviour.NetworkStart(isClient);
@@ -32,7 +31,9 @@ namespace Netcode.Core
 
         private void Awake()
         {
-            _networkBehaviours = GetComponents<NetworkBehaviour>();
+            var networkBehaviours = GetComponents<NetworkBehaviour>();
+            if (networkBehaviours == null) return;
+            _networkBehaviours = networkBehaviours;
         }
     }
 }

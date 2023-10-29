@@ -1,18 +1,13 @@
 using System;
-using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Networking.Transport;
-using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace Netcode.Core
 {
     public class ClientNetworkManager
     {
 
-        public INetworkPrefabLoader NetworkPrefabLoader;
-        
-        private readonly List<NetworkObject> _networkObjects = new List<NetworkObject>();
+        public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
 
         private NetworkDriver _driver;
         private NetworkConnection _serverConnection;
@@ -29,12 +24,7 @@ namespace Netcode.Core
                 _serverConnection = default;
             }
 
-            foreach (var networkObject in _networkObjects)
-            {
-                if (networkObject == null) continue;
-                Object.Destroy(networkObject.gameObject);
-            }
-            _networkObjects.Clear();
+            ObjectManager.Clear();
         }
 
         public void StopNetwork()
@@ -103,32 +93,16 @@ namespace Netcode.Core
             switch (action)
             {
                 case NetworkAction.SpawnObject:
-                    SpawnNetworkObject(ref stream);
+                    ObjectManager.SpawnNetworkObject(ref stream);
                     break;
                 case NetworkAction.RemoveObject:
+                    break;
+                case NetworkAction.UpdateObject:
+                    ObjectManager.UpdateNetworkObject(ref stream);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(action), action, null);
             }
-        }
-
-        private void SpawnNetworkObject(ref DataStreamReader reader)
-        {
-            var networkObject = NetworkPrefabLoader.Instantiate(reader.ReadInt());
-            networkObject.name = "Client";
-            networkObject.NetworkObjectId = reader.ReadInt();
-            if (networkObject.NetworkBehaviours != null)
-            {
-                foreach (var networkBehaviour in networkObject.NetworkBehaviours)
-                {
-                    foreach (var t in networkBehaviour.NetworkVariables)
-                    {
-                        t.Deserialize(ref reader);
-                    }
-                }
-            }
-            _networkObjects.Add(networkObject);
-            networkObject.NetworkStart(true);
         }
     }
 }
