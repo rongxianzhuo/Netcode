@@ -6,6 +6,8 @@ namespace Netcode.Variable
     {
         
         bool IsChanged { get; }
+
+        void ClearChange();
         
         VariablePermission ReadPermission { get; }
 

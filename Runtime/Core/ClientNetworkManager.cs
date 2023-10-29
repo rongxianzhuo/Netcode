@@ -10,18 +10,26 @@ namespace Netcode.Core
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
 
         private NetworkDriver _driver;
-        private NetworkConnection _serverConnection;
+        private readonly NetworkConnection[] _serverConnection = new NetworkConnection[1];
+
+        private NetworkConnection ServerConnection
+        {
+            get => _serverConnection[0];
+            set => _serverConnection[0] = value;
+        }
 
         public bool IsRunning => _driver.IsCreated;
+        
+        public int ClientId { get; private set; }
 
         public void Disconnect()
         {
             if (!IsRunning) return;
             
-            if (_serverConnection.IsCreated)
+            if (ServerConnection.IsCreated)
             {
-                _serverConnection.Disconnect(_driver);
-                _serverConnection = default;
+                ServerConnection.Disconnect(_driver);
+                ServerConnection = default;
             }
 
             ObjectManager.Clear();
@@ -49,10 +57,10 @@ namespace Netcode.Core
 
         public void ConnectServer()
         {
-            if (_serverConnection.IsCreated) _serverConnection.Disconnect(_driver);
+            if (ServerConnection.IsCreated) ServerConnection.Disconnect(_driver);
             var endpoint = NetworkEndpoint.LoopbackIpv4;
             endpoint.Port = 9002;
-            _serverConnection = _driver.Connect(endpoint);
+            ServerConnection = _driver.Connect(endpoint);
         }
 
         public void Update()
@@ -61,23 +69,28 @@ namespace Netcode.Core
             
             _driver.ScheduleUpdate().Complete();
 
+            if (ClientId > ServerNetworkManager.ClientId)
+            {
+                ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _serverConnection);
+            }
+
             NetworkEvent.Type cmd;
-            while (_serverConnection.IsCreated && (cmd = _serverConnection.PopEvent(_driver, out var stream)) != NetworkEvent.Type.Empty)
+            while (ServerConnection.IsCreated && (cmd = ServerConnection.PopEvent(_driver, out var stream)) != NetworkEvent.Type.Empty)
             {
                 switch (cmd)
                 {
                     case NetworkEvent.Type.Connect:
                     {
-                        _driver.BeginSend(NetworkPipeline.Null, _serverConnection, out var writer);
+                        _driver.BeginSend(NetworkPipeline.Null, ServerConnection, out var writer);
                         writer.WriteByte(5);
                         _driver.EndSend(writer);
                         break;
                     }
                     case NetworkEvent.Type.Data:
-                        HandleNetworkData((NetworkAction) stream.ReadByte(), _serverConnection, ref stream);
+                        HandleNetworkData((NetworkAction) stream.ReadByte(), ServerConnection, ref stream);
                         break;
                     case NetworkEvent.Type.Disconnect:
-                        _serverConnection = default;
+                        ServerConnection = default;
                         StopNetwork();
                         break;
                     case NetworkEvent.Type.Empty:
@@ -88,17 +101,20 @@ namespace Netcode.Core
             }
         }
 
-        private void HandleNetworkData(NetworkAction action, NetworkConnection connection, ref DataStreamReader stream)
+        private void HandleNetworkData(NetworkAction action, NetworkConnection connection, ref DataStreamReader reader)
         {
             switch (action)
             {
                 case NetworkAction.SpawnObject:
-                    ObjectManager.SpawnNetworkObject(ref stream);
+                    ObjectManager.SpawnNetworkObject(ref reader);
                     break;
                 case NetworkAction.RemoveObject:
                     break;
                 case NetworkAction.UpdateObject:
-                    ObjectManager.UpdateNetworkObject(ref stream);
+                    ObjectManager.UpdateNetworkObject(ref reader);
+                    break;
+                case NetworkAction.ConnectionApproval:
+                    ClientId = reader.ReadInt();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(action), action, null);

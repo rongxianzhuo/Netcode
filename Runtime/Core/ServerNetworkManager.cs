@@ -11,7 +11,7 @@ namespace Netcode.Core
 
         public const int ClientId = 0;
 
-        public event Action ClientConnectEvent; 
+        public event Action<int> ClientConnectEvent; 
         
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         
@@ -83,7 +83,12 @@ namespace Netcode.Core
                             {
                                 _clientConnections.Add(connection);
                                 _pendingClientConnections.RemoveAt(i);
-                                ClientConnectEvent?.Invoke();
+                                var clientId = _clientConnections.Count;
+                                _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                                writer.WriteByte((byte)NetworkAction.ConnectionApproval);
+                                writer.WriteInt(clientId);
+                                _driver.EndSend(writer);
+                                ClientConnectEvent?.Invoke(clientId);
                             }
                             break;
                         case NetworkEvent.Type.Disconnect:
@@ -137,6 +142,7 @@ namespace Netcode.Core
                 case NetworkAction.RemoveObject:
                     break;
                 case NetworkAction.UpdateObject:
+                    ObjectManager.UpdateNetworkObject(ref reader);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(action), action, null);

@@ -14,8 +14,13 @@ namespace Netcode.Variable
 
         private static readonly INetworkVariableSerializer<T> Serializer;
 
-        public bool IsChanged { get; internal set; }
-        
+        public bool IsChanged { get; private set; }
+
+        public void ClearChange()
+        {
+            IsChanged = false;
+        }
+
         public VariablePermission ReadPermission { get; }
 
         public VariablePermission WritePermission { get; }
@@ -41,6 +46,8 @@ namespace Netcode.Variable
             ReadPermission = readPermission;
             WritePermission = writePermission;
         }
+        
+        
 
         public void Serialize(ref DataStreamWriter writer)
         {

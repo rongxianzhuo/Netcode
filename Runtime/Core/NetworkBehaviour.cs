@@ -14,6 +14,8 @@ namespace Netcode.Core
         private readonly Dictionary<int, INetworkVariable> _changedNetworkVariable =
             new Dictionary<int, INetworkVariable>();
 
+        public bool IsClient => MyNetworkObject.IsClient;
+
         public NetworkObject MyNetworkObject { get; private set; }
 
         public IReadOnlyList<INetworkVariable> NetworkVariables => _networkVariables;

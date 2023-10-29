@@ -83,6 +83,17 @@ namespace Netcode.Core
                     driver.EndSend(writer);
                 }
             }
+
+            foreach (var networkObject in _existObjects.Values)
+            {
+                foreach (var behaviour in networkObject.NetworkBehaviours)
+                {
+                    foreach (var variable in behaviour.NetworkVariables)
+                    {
+                        variable.ClearChange();
+                    }
+                }
+            }
         }
 
         internal void BroadcastSpawnNetworkObject(NetworkDriver driver, IReadOnlyList<NetworkConnection> clientConnections)
@@ -111,6 +122,17 @@ namespace Netcode.Core
                 }
 
                 _existObjects[networkObject.NetworkObjectId] = networkObject;
+            }
+
+            foreach (var networkObject in _newObjects)
+            {
+                foreach (var behaviour in networkObject.NetworkBehaviours)
+                {
+                    foreach (var variable in behaviour.NetworkVariables)
+                    {
+                        variable.ClearChange();
+                    }
+                }
             }
             _newObjects.Clear();
         }

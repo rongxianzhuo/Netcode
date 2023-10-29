@@ -10,16 +10,19 @@ namespace Netcode.Components
     {
 
         public readonly NetworkVariable<float> Test = new NetworkVariable<float>(default);
+        public readonly NetworkVariable<float> Joystick = new NetworkVariable<float>(default
+            , writePermission: VariablePermission.OwnerOnly);
 
         private void UpdatePosition()
         {
-            if (MyNetworkObject.IsClient)
+            if (IsClient)
             {
                 transform.position = new Vector3(Test.Value, 0, 0);
+                Joystick.Value = Input.GetAxis("Horizontal");
             }
             else
             {
-                Test.Value = Mathf.Sin(Time.time);
+                Test.Value += Joystick.Value * Time.deltaTime;
                 transform.position = new Vector3(Test.Value, 0, 0);
             }
         }
