@@ -5,8 +5,15 @@ namespace Netcode.Variable
     public interface INetworkVariable
     {
         
-        public void Serialize(ref DataStreamWriter writer);
-        public void Deserialize(ref DataStreamReader reader);
+        bool IsChanged { get; }
+        
+        VariablePermission ReadPermission { get; }
+
+        VariablePermission WritePermission { get; }
+
+        void Serialize(ref DataStreamWriter writer);
+        
+        void Deserialize(ref DataStreamReader reader);
         
     }
 }

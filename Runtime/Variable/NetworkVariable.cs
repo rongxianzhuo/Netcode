@@ -5,8 +5,20 @@ namespace Netcode.Variable
 {
     public class NetworkVariable<T>: INetworkVariable where T : IEquatable<T>
     {
+        
+        static NetworkVariable()
+        {
+            NetworkVariable<int>.Serializer = new IntNetworkVariableSerializer();
+            NetworkVariable<float>.Serializer = new FloatNetworkVariableSerializer();
+        }
 
         private static readonly INetworkVariableSerializer<T> Serializer;
+
+        public bool IsChanged { get; internal set; }
+        
+        public VariablePermission ReadPermission { get; }
+
+        public VariablePermission WritePermission { get; }
 
         private T _value;
 
@@ -16,19 +28,18 @@ namespace Netcode.Variable
             set
             {
                 if (_value.Equals(value)) return;
+                IsChanged = true;
                 _value = value;
             }
         }
-        
-        static NetworkVariable()
-        {
-            NetworkVariable<int>.Serializer = new IntNetworkVariableSerializer();
-            NetworkVariable<float>.Serializer = new FloatNetworkVariableSerializer();
-        }
 
-        public NetworkVariable(T defaultValue)
+        public NetworkVariable(T defaultValue
+            , VariablePermission readPermission=VariablePermission.ServerOnly
+            , VariablePermission writePermission=VariablePermission.ServerOnly)
         {
             _value = defaultValue;
+            ReadPermission = readPermission;
+            WritePermission = writePermission;
         }
 
         public void Serialize(ref DataStreamWriter writer)

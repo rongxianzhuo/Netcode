@@ -14,22 +14,24 @@ namespace Netcode.Core
         private readonly HashSet<NetworkObject> _newObjects = new HashSet<NetworkObject>();
         private readonly Dictionary<int, NetworkObject> _existObjects = new Dictionary<int, NetworkObject>();
 
-        public void SpawnNetworkObject(NetworkObject networkObject)
+        public void SpawnNetworkObject(NetworkObject networkObject, int ownerId)
         {
-            var objectId = _allocateNetworkObjectId++;
-            networkObject.NetworkObjectId = objectId;
             _newObjects.Add(networkObject);
-            networkObject.NetworkStart(false);
+            networkObject.NetworkStart(false, ownerId, _allocateNetworkObjectId++);
         }
 
         internal void UpdateNetworkObject(ref DataStreamReader reader)
         {
             var networkObject = _existObjects[reader.ReadInt()];
-            foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+            var changeBehaviourCount = reader.ReadInt();
+            while (changeBehaviourCount-- > 0)
             {
-                foreach (var t in networkBehaviour.NetworkVariables)
+                var networkBehaviour = networkObject.NetworkBehaviours[reader.ReadInt()];
+                var changeVariableCount = reader.ReadInt();
+                while (changeVariableCount-- > 0)
                 {
-                    t.Deserialize(ref reader);
+                    var networkVariable = networkBehaviour.NetworkVariables[reader.ReadInt()];
+                    networkVariable.Deserialize(ref reader);
                 }
             }
         }
@@ -38,7 +40,8 @@ namespace Netcode.Core
         {
             var networkObject = NetworkPrefabLoader.Instantiate(reader.ReadInt());
             networkObject.name = "Client";
-            networkObject.NetworkObjectId = reader.ReadInt();
+            var ownerId = reader.ReadInt();
+            var networkObjectId = reader.ReadInt();
             if (networkObject.NetworkBehaviours != null)
             {
                 foreach (var networkBehaviour in networkObject.NetworkBehaviours)
@@ -51,23 +54,30 @@ namespace Netcode.Core
             }
 
             _existObjects[networkObject.NetworkObjectId] = networkObject;
-            networkObject.NetworkStart(true);
+            networkObject.NetworkStart(true, ownerId, networkObjectId);
         }
 
-        internal void BroadcastUpdateNetworkObject(NetworkDriver driver, IReadOnlyList<NetworkConnection> clientConnections)
+        internal void BroadcastUpdateNetworkObject(int clientId, NetworkDriver driver, IReadOnlyList<NetworkConnection> clientConnections)
         {
             foreach (var networkObject in _existObjects.Values)
             {
+                var changedVariable = networkObject.CalculateChangedVariable(clientId);
+                if (changedVariable.Count == 0) continue;
                 foreach (var connection in clientConnections)
                 {
+                    if (!connection.IsCreated) continue;
                     driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.UpdateObject);
                     writer.WriteInt(networkObject.NetworkObjectId);
-                    foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+                    writer.WriteInt(changedVariable.Count);
+                    foreach (var behaviour in changedVariable)
                     {
-                        foreach (var networkVariable in networkBehaviour.NetworkVariables)
+                        writer.WriteInt(behaviour.Key);
+                        writer.WriteInt(behaviour.Value.Count);
+                        foreach (var variable in behaviour.Value)
                         {
-                            networkVariable.Serialize(ref writer);
+                            writer.WriteInt(variable.Key);
+                            variable.Value.Serialize(ref writer);
                         }
                     }
                     driver.EndSend(writer);
@@ -85,6 +95,7 @@ namespace Netcode.Core
                     driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.SpawnObject);
                     writer.WriteInt(networkObject.PrefabId);
+                    writer.WriteInt(networkObject.OwnerId);
                     writer.WriteInt(networkObject.NetworkObjectId);
                     if (networkObject.NetworkBehaviours != null)
                     {

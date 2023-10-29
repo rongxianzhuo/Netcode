@@ -11,13 +11,39 @@ namespace Netcode.Core
 
         private readonly List<INetworkVariable> _networkVariables = new List<INetworkVariable>();
 
-        public bool IsClient { get; private set; }
+        private readonly Dictionary<int, INetworkVariable> _changedNetworkVariable =
+            new Dictionary<int, INetworkVariable>();
+
+        public NetworkObject MyNetworkObject { get; private set; }
 
         public IReadOnlyList<INetworkVariable> NetworkVariables => _networkVariables;
 
-        internal void NetworkStart(bool isClient)
+        private static bool CheckPermission(int clientId, VariablePermission permission, bool isOwner)
         {
-            IsClient = isClient;
+            if (permission == VariablePermission.All) return true;
+            if (clientId == 0) return true;
+            return permission == VariablePermission.OwnerOnly && isOwner;
+        }
+
+        internal IReadOnlyDictionary<int, INetworkVariable> CalculateChangedVariable(int clientId)
+        {
+            _changedNetworkVariable.Clear();
+            for (var i = 0; i < _networkVariables.Count; i++)
+            {
+                var variable = _networkVariables[i];
+                if (!CheckPermission(clientId, variable.WritePermission, MyNetworkObject.OwnerId == clientId))
+                {
+                    continue;
+                }
+                if (variable.IsChanged) _changedNetworkVariable[i] = variable;
+            }
+
+            return _changedNetworkVariable;
+        }
+
+        internal void NetworkStart(NetworkObject networkObject)
+        {
+            MyNetworkObject = networkObject;
             OnNetworkStart();
         }
 

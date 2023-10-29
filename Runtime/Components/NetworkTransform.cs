@@ -13,7 +13,7 @@ namespace Netcode.Components
 
         private void UpdatePosition()
         {
-            if (IsClient)
+            if (MyNetworkObject.IsClient)
             {
                 transform.position = new Vector3(Test.Value, 0, 0);
             }

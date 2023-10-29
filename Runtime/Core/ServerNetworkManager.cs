@@ -9,6 +9,8 @@ namespace Netcode.Core
     public sealed class ServerNetworkManager
     {
 
+        public const int ClientId = 0;
+
         public event Action ClientConnectEvent; 
         
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
@@ -26,7 +28,7 @@ namespace Netcode.Core
 
             foreach (var connection in _clientConnections)
             {
-                connection.Disconnect(_driver);
+                if (connection.IsCreated) connection.Disconnect(_driver);
             }
             _clientConnections.Clear();
                 
@@ -101,9 +103,8 @@ namespace Netcode.Core
             {
                 var connection = _clientConnections[i];
                 
-                
                 NetworkEvent.Type cmd;
-                while ((cmd = _driver.PopEventForConnection(_clientConnections[i], out var stream)) != NetworkEvent.Type.Empty)
+                while (connection.IsCreated && (cmd = _driver.PopEventForConnection(_clientConnections[i], out var stream)) != NetworkEvent.Type.Empty)
                 {
                     switch (cmd)
                     {
@@ -111,7 +112,7 @@ namespace Netcode.Core
                             HandleNetworkData((NetworkAction) stream.ReadByte(), connection, stream);
                             break;
                         case NetworkEvent.Type.Disconnect:
-                            _clientConnections.RemoveAt(i);
+                            _clientConnections[i] = default;
                             break;
                         case NetworkEvent.Type.Empty:
                             break;
@@ -123,7 +124,7 @@ namespace Netcode.Core
                 }
             }
 
-            ObjectManager.BroadcastUpdateNetworkObject(_driver, _clientConnections);
+            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
             ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
         }
 
