@@ -10,6 +10,7 @@ namespace Netcode.Core
     {
 
         public const int ClientId = 0;
+        public const long ApprovalToken = 123456789;
 
         public event Action<int> ClientConnectEvent;
 
@@ -71,6 +72,49 @@ namespace Netcode.Core
                 _pendingClientConnections.Add(c);
             }
 
+            // Approval pending connections
+            for (var i = _pendingClientConnections.Count - 1; i >= 0; i--)
+            {
+                var connection = _pendingClientConnections[i];
+                
+                NetworkEvent.Type cmd;
+                if ((cmd = _driver.PopEventForConnection(connection, out var stream)) == NetworkEvent.Type.Empty)
+                {
+                    continue;
+                }
+                switch (cmd)
+                {
+                    case NetworkEvent.Type.Data:
+                        if (stream.ReadLong() == ApprovalToken)
+                        {
+                            _clientConnections.Add(connection);
+                            var clientId = _clientConnections.Count;
+                            _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                            writer.WriteByte((byte)NetworkAction.ConnectionApproval);
+                            writer.WriteInt(clientId);
+                            _driver.EndSend(writer);
+                            ClientConnectEvent?.Invoke(clientId);
+                            ObjectManager.BroadcastAllNetworkObject(_driver, connection);
+                        }
+                        else
+                        {
+                            _driver.Disconnect(connection);
+                        }
+                        break;
+                    case NetworkEvent.Type.Disconnect:
+                        break;
+                    case NetworkEvent.Type.Empty:
+                        break;
+                    case NetworkEvent.Type.Connect:
+                        Debug.LogError("Unknown error!");
+                        _driver.Disconnect(connection);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+                _pendingClientConnections.RemoveAt(i);
+            }
+
             for (var i = _clientConnections.Count - 1; i >= 0; i--)
             {
                 var connection = _clientConnections[i];
@@ -84,6 +128,7 @@ namespace Netcode.Core
                             HandleNetworkData((NetworkAction) stream.ReadByte(), connection, stream);
                             break;
                         case NetworkEvent.Type.Disconnect:
+                            connection = default;
                             _clientConnections[i] = default;
                             break;
                         case NetworkEvent.Type.Empty:
@@ -105,42 +150,6 @@ namespace Netcode.Core
 
             ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
             ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
-
-            for (var i = _pendingClientConnections.Count - 1; i >= 0; i--)
-            {
-                var connection = _pendingClientConnections[i];
-                
-                NetworkEvent.Type cmd;
-                while ((cmd = _driver.PopEventForConnection(connection, out var stream)) != NetworkEvent.Type.Empty)
-                {
-                    switch (cmd)
-                    {
-                        case NetworkEvent.Type.Data:
-                            if (stream.ReadByte() == 5)
-                            {
-                                _clientConnections.Add(connection);
-                                _pendingClientConnections.RemoveAt(i);
-                                var clientId = _clientConnections.Count;
-                                _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
-                                writer.WriteByte((byte)NetworkAction.ConnectionApproval);
-                                writer.WriteInt(clientId);
-                                _driver.EndSend(writer);
-                                ClientConnectEvent?.Invoke(clientId);
-                                ObjectManager.BroadcastAllNetworkObject(_driver, connection);
-                            }
-                            break;
-                        case NetworkEvent.Type.Disconnect:
-                            _pendingClientConnections.RemoveAt(i);
-                            break;
-                        case NetworkEvent.Type.Empty:
-                            break;
-                        case NetworkEvent.Type.Connect:
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                }
-            }
         }
 
         private void HandleNetworkData(NetworkAction action, NetworkConnection connection, DataStreamReader reader)
@@ -153,6 +162,8 @@ namespace Netcode.Core
                     break;
                 case NetworkAction.UpdateObject:
                     ObjectManager.UpdateNetworkObject(ref reader);
+                    break;
+                case NetworkAction.ConnectionApproval:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(action), action, null);

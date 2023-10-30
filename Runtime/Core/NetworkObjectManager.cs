@@ -39,10 +39,15 @@ namespace Netcode.Core
 
         internal void SpawnNetworkObject(ref DataStreamReader reader)
         {
-            var networkObject = NetworkPrefabLoader.Instantiate(reader.ReadInt());
-            networkObject.name = "Client";
+            var prefabId = reader.ReadInt();
             var ownerId = reader.ReadInt();
             var networkObjectId = reader.ReadInt();
+            var alreadySpawn = _existObjects.TryGetValue(networkObjectId, out var networkObject);
+            if (!alreadySpawn)
+            {
+                networkObject = NetworkPrefabLoader.Instantiate(prefabId);
+            }
+            networkObject.name = "Client";
             if (networkObject.NetworkBehaviours != null)
             {
                 foreach (var networkBehaviour in networkObject.NetworkBehaviours)
@@ -54,8 +59,11 @@ namespace Netcode.Core
                 }
             }
 
-            _existObjects[networkObjectId] = networkObject;
-            networkObject.NetworkStart(true, ownerId, networkObjectId);
+            if (!alreadySpawn)
+            {
+                _existObjects[networkObjectId] = networkObject;
+                networkObject.NetworkStart(true, ownerId, networkObjectId);
+            }
         }
 
         internal void BroadcastUpdateNetworkObject(int clientId, NetworkDriver driver, IReadOnlyList<NetworkConnection> clientConnections)

@@ -80,7 +80,7 @@ namespace Netcode.Core
                     case NetworkEvent.Type.Connect:
                     {
                         _driver.BeginSend(NetworkPipeline.Null, ServerConnection, out var writer);
-                        writer.WriteByte(5);
+                        writer.WriteLong(ServerNetworkManager.ApprovalToken);
                         _driver.EndSend(writer);
                         break;
                     }
