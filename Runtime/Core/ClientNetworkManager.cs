@@ -1,16 +1,19 @@
 using System;
 using Unity.Collections;
 using Unity.Networking.Transport;
+using UnityEngine;
 
 namespace Netcode.Core
 {
     public class ClientNetworkManager
     {
 
+        public readonly NetcodeSettings Settings = new NetcodeSettings();
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
+        private readonly NetworkConnection[] _serverConnection = new NetworkConnection[1];
 
         private NetworkDriver _driver;
-        private readonly NetworkConnection[] _serverConnection = new NetworkConnection[1];
+        private float _sendMessageTime;
 
         private NetworkConnection ServerConnection
         {
@@ -69,11 +72,6 @@ namespace Netcode.Core
             
             _driver.ScheduleUpdate().Complete();
 
-            if (ClientId > ServerNetworkManager.ClientId)
-            {
-                ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _serverConnection);
-            }
-
             NetworkEvent.Type cmd;
             while (ServerConnection.IsCreated && (cmd = ServerConnection.PopEvent(_driver, out var stream)) != NetworkEvent.Type.Empty)
             {
@@ -98,6 +96,18 @@ namespace Netcode.Core
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+            }
+
+            if (Time.realtimeSinceStartup - _sendMessageTime < Settings.clientSendInternal)
+            {
+                return;
+            }
+
+            _sendMessageTime = Time.realtimeSinceStartup;
+
+            if (ClientId > ServerNetworkManager.ClientId)
+            {
+                ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _serverConnection);
             }
         }
 

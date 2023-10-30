@@ -11,14 +11,16 @@ namespace Netcode.Core
 
         public const int ClientId = 0;
 
-        public event Action<int> ClientConnectEvent; 
-        
+        public event Action<int> ClientConnectEvent;
+
+        public readonly NetcodeSettings Settings = new NetcodeSettings();
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         
         private readonly List<NetworkConnection> _clientConnections = new List<NetworkConnection>();
         private readonly List<NetworkConnection> _pendingClientConnections = new List<NetworkConnection>();
 
         private NetworkDriver _driver;
+        private float _sendMessageTime;
 
         public bool IsRunning => _driver.IsCreated;
 
@@ -93,6 +95,13 @@ namespace Netcode.Core
                     }
                 }
             }
+
+            if (Time.realtimeSinceStartup - _sendMessageTime < Settings.serverSendInterval)
+            {
+                return;
+            }
+
+            _sendMessageTime = Time.realtimeSinceStartup;
 
             ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
             ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);

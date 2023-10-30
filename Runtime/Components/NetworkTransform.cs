@@ -9,7 +9,9 @@ namespace Netcode.Components
     public class NetworkTransform : NetworkBehaviour
     {
 
-        public readonly NetworkVariable<Vector3> Test = new NetworkVariable<Vector3>(default);
+        public readonly NetworkVariable<Vector3> Position = new NetworkVariable<Vector3>(default
+            , writePermission: VariablePermission.ServerOnly);
+        
         public readonly NetworkVariable<Vector3> Joystick = new NetworkVariable<Vector3>(default
             , writePermission: VariablePermission.OwnerOnly);
 
@@ -17,13 +19,13 @@ namespace Netcode.Components
         {
             if (IsClient)
             {
-                transform.position = Test.Value;
+                transform.position = Vector3.Lerp(transform.position, Position.Value, 0.15f);
                 Joystick.Value = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
             }
             else
             {
-                Test.Value += Joystick.Value * Time.deltaTime;
-                transform.position = Test.Value;
+                Position.Value += Joystick.Value * Time.deltaTime;
+                transform.position = Position.Value;
             }
         }
 
