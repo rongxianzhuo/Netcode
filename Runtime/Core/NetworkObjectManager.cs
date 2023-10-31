@@ -66,16 +66,16 @@ namespace Netcode.Core
             }
         }
 
-        internal void BroadcastUpdateNetworkObject(int clientId, NetworkDriver driver, IReadOnlyList<NetworkConnection> clientConnections)
+        internal void BroadcastUpdateNetworkObject(int clientId, NetworkDriver driver, IReadOnlyList<ClientInfo> clientConnections)
         {
             foreach (var networkObject in _existObjects.Values)
             {
                 var changedVariable = networkObject.CalculateChangedVariable(clientId);
                 if (changedVariable.Count == 0) continue;
-                foreach (var connection in clientConnections)
+                foreach (var client in clientConnections)
                 {
-                    if (!connection.IsCreated) continue;
-                    driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                    if (!client.IsConnected) continue;
+                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.UpdateObject);
                     writer.WriteInt(networkObject.NetworkObjectId);
                     writer.WriteInt(changedVariable.Count);
@@ -105,14 +105,14 @@ namespace Netcode.Core
             }
         }
 
-        internal void BroadcastSpawnNetworkObject(NetworkDriver driver, IReadOnlyList<NetworkConnection> clientConnections)
+        internal void BroadcastSpawnNetworkObject(NetworkDriver driver, IReadOnlyList<ClientInfo> clientConnections)
         {
             foreach (var networkObject in _newObjects)
             {
-                foreach (var connection in clientConnections)
+                foreach (var client in clientConnections)
                 {
-                    if (!connection.IsCreated) continue;
-                    driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                    if (!client.IsConnected) continue;
+                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.SpawnObject);
                     writer.WriteInt(networkObject.PrefabId);
                     writer.WriteInt(networkObject.OwnerId);
@@ -146,27 +146,30 @@ namespace Netcode.Core
             _newObjects.Clear();
         }
 
-        internal void BroadcastAllNetworkObject(NetworkDriver driver, NetworkConnection connection)
+        internal void BroadcastAllNetworkObject(NetworkDriver driver, IReadOnlyList<ClientInfo> clientConnections)
         {
             foreach (var networkObject in _existObjects.Values)
             {
-                if (!connection.IsCreated) continue;
-                driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
-                writer.WriteByte((byte)NetworkAction.SpawnObject);
-                writer.WriteInt(networkObject.PrefabId);
-                writer.WriteInt(networkObject.OwnerId);
-                writer.WriteInt(networkObject.NetworkObjectId);
-                if (networkObject.NetworkBehaviours != null)
+                foreach (var client in clientConnections)
                 {
-                    foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+                    if (!client.IsConnected) continue;
+                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
+                    writer.WriteByte((byte)NetworkAction.SpawnObject);
+                    writer.WriteInt(networkObject.PrefabId);
+                    writer.WriteInt(networkObject.OwnerId);
+                    writer.WriteInt(networkObject.NetworkObjectId);
+                    if (networkObject.NetworkBehaviours != null)
                     {
-                        foreach (var t in networkBehaviour.NetworkVariables)
+                        foreach (var networkBehaviour in networkObject.NetworkBehaviours)
                         {
-                            t.Serialize(ref writer);
+                            foreach (var t in networkBehaviour.NetworkVariables)
+                            {
+                                t.Serialize(ref writer);
+                            }
                         }
                     }
+                    driver.EndSend(writer);
                 }
-                driver.EndSend(writer);
             }
         }
 

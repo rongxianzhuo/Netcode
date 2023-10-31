@@ -10,12 +10,12 @@ namespace Netcode.Core
 
         public readonly NetcodeSettings Settings = new NetcodeSettings();
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
-        private readonly NetworkConnection[] _serverConnection = new NetworkConnection[1];
+        private readonly ClientInfo[] _serverConnection = new []{new ClientInfo(0, default)};
 
         private NetworkDriver _driver;
         private float _sendMessageTime;
 
-        private NetworkConnection ServerConnection
+        private ClientInfo ServerInfo
         {
             get => _serverConnection[0];
             set => _serverConnection[0] = value;
@@ -29,10 +29,10 @@ namespace Netcode.Core
         {
             if (!IsRunning) return;
             
-            if (ServerConnection.IsCreated)
+            if (ServerInfo.IsConnected)
             {
-                ServerConnection.Disconnect(_driver);
-                ServerConnection = default;
+                ServerInfo.Disconnect(_driver);
+                ServerInfo = default;
             }
 
             ObjectManager.Clear();
@@ -60,10 +60,10 @@ namespace Netcode.Core
 
         public void ConnectServer()
         {
-            if (ServerConnection.IsCreated) ServerConnection.Disconnect(_driver);
+            if (ServerInfo.IsConnected) ServerInfo.Disconnect(_driver);
             var endpoint = NetworkEndpoint.LoopbackIpv4;
             endpoint.Port = 9002;
-            ServerConnection = _driver.Connect(endpoint);
+            ServerInfo = new ClientInfo(ServerNetworkManager.ClientId, _driver.Connect(endpoint));
         }
 
         public void Update()
@@ -73,22 +73,22 @@ namespace Netcode.Core
             _driver.ScheduleUpdate().Complete();
 
             NetworkEvent.Type cmd;
-            while (ServerConnection.IsCreated && (cmd = ServerConnection.PopEvent(_driver, out var stream)) != NetworkEvent.Type.Empty)
+            while (ServerInfo.IsConnected && (cmd = ServerInfo.Connection.PopEvent(_driver, out var stream)) != NetworkEvent.Type.Empty)
             {
                 switch (cmd)
                 {
                     case NetworkEvent.Type.Connect:
                     {
-                        _driver.BeginSend(NetworkPipeline.Null, ServerConnection, out var writer);
+                        _driver.BeginSend(NetworkPipeline.Null, ServerInfo.Connection, out var writer);
                         writer.WriteLong(ServerNetworkManager.ApprovalToken);
                         _driver.EndSend(writer);
                         break;
                     }
                     case NetworkEvent.Type.Data:
-                        HandleNetworkData((NetworkAction) stream.ReadByte(), ServerConnection, ref stream);
+                        HandleNetworkData((NetworkAction) stream.ReadByte(), ServerInfo.Connection, ref stream);
                         break;
                     case NetworkEvent.Type.Disconnect:
-                        ServerConnection = default;
+                        ServerInfo.Disconnect();
                         StopNetwork();
                         break;
                     case NetworkEvent.Type.Empty:

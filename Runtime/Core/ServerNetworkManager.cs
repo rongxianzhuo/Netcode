@@ -17,7 +17,8 @@ namespace Netcode.Core
         public readonly NetcodeSettings Settings = new NetcodeSettings();
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         
-        private readonly List<NetworkConnection> _clientConnections = new List<NetworkConnection>();
+        private readonly List<ClientInfo> _oldConnections = new List<ClientInfo>();
+        private readonly List<ClientInfo> _newConnections = new List<ClientInfo>();
         private readonly List<NetworkConnection> _pendingClientConnections = new List<NetworkConnection>();
 
         private NetworkDriver _driver;
@@ -29,11 +30,17 @@ namespace Netcode.Core
         {
             if (!IsRunning) return;
 
-            foreach (var connection in _clientConnections)
+            foreach (var connection in _oldConnections)
             {
-                if (connection.IsCreated) connection.Disconnect(_driver);
+                connection.Disconnect(_driver);
             }
-            _clientConnections.Clear();
+            _oldConnections.Clear();
+
+            foreach (var connection in _newConnections)
+            {
+                connection.Disconnect(_driver);
+            }
+            _newConnections.Clear();
                 
             foreach (var connection in _pendingClientConnections)
             {
@@ -87,14 +94,13 @@ namespace Netcode.Core
                     case NetworkEvent.Type.Data:
                         if (stream.ReadLong() == ApprovalToken)
                         {
-                            _clientConnections.Add(connection);
-                            var clientId = _clientConnections.Count;
+                            var client = new ClientInfo(_oldConnections.Count + _newConnections.Count + 1, connection);
+                            _newConnections.Add(client);
                             _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
                             writer.WriteByte((byte)NetworkAction.ConnectionApproval);
-                            writer.WriteInt(clientId);
+                            writer.WriteInt(client.ClientId);
                             _driver.EndSend(writer);
-                            ClientConnectEvent?.Invoke(clientId);
-                            ObjectManager.BroadcastAllNetworkObject(_driver, connection);
+                            ClientConnectEvent?.Invoke(client.ClientId);
                         }
                         else
                         {
@@ -115,30 +121,14 @@ namespace Netcode.Core
                 _pendingClientConnections.RemoveAt(i);
             }
 
-            for (var i = _clientConnections.Count - 1; i >= 0; i--)
+            for (var i = _oldConnections.Count - 1; i >= 0; i--)
             {
-                var connection = _clientConnections[i];
-                
-                NetworkEvent.Type cmd;
-                while (connection.IsCreated && (cmd = _driver.PopEventForConnection(_clientConnections[i], out var stream)) != NetworkEvent.Type.Empty)
-                {
-                    switch (cmd)
-                    {
-                        case NetworkEvent.Type.Data:
-                            HandleNetworkData((NetworkAction) stream.ReadByte(), connection, stream);
-                            break;
-                        case NetworkEvent.Type.Disconnect:
-                            connection = default;
-                            _clientConnections[i] = default;
-                            break;
-                        case NetworkEvent.Type.Empty:
-                            break;
-                        case NetworkEvent.Type.Connect:
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                }
+                HandleNetworkEvent(_oldConnections[i]);
+            }
+
+            for (var i = _newConnections.Count - 1; i >= 0; i--)
+            {
+                HandleNetworkEvent(_newConnections[i]);
             }
 
             if (Time.realtimeSinceStartup - _sendMessageTime < Settings.serverSendInterval)
@@ -148,8 +138,34 @@ namespace Netcode.Core
 
             _sendMessageTime = Time.realtimeSinceStartup;
 
-            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
-            ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
+            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _oldConnections);
+            ObjectManager.BroadcastSpawnNetworkObject(_driver, _oldConnections);
+            ObjectManager.BroadcastAllNetworkObject(_driver, _newConnections);
+            _oldConnections.AddRange(_newConnections);
+            _newConnections.Clear();
+        }
+
+        private void HandleNetworkEvent(ClientInfo client)
+        {
+            NetworkEvent.Type cmd;
+            while (client.IsConnected && (cmd = _driver.PopEventForConnection(client.Connection, out var stream)) != NetworkEvent.Type.Empty)
+            {
+                switch (cmd)
+                {
+                    case NetworkEvent.Type.Data:
+                        HandleNetworkData((NetworkAction) stream.ReadByte(), client.Connection, stream);
+                        break;
+                    case NetworkEvent.Type.Disconnect:
+                        client.Disconnect();
+                        break;
+                    case NetworkEvent.Type.Empty:
+                        break;
+                    case NetworkEvent.Type.Connect:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
         }
 
         private void HandleNetworkData(NetworkAction action, NetworkConnection connection, DataStreamReader reader)
