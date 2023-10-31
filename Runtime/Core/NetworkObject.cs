@@ -11,6 +11,8 @@ namespace Netcode.Core
         private readonly Dictionary<int, IReadOnlyDictionary<int, INetworkVariable>> _changedNetworkBehaviour =
             new Dictionary<int, IReadOnlyDictionary<int, INetworkVariable>>();
 
+        public Func<int, bool> CheckObjectVisibility = _ => true;
+
         [SerializeField]
         private int prefabId;
 

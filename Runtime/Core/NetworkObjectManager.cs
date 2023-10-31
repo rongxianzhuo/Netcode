@@ -11,19 +11,19 @@ namespace Netcode.Core
         public INetworkPrefabLoader NetworkPrefabLoader;
         
         private int _allocateNetworkObjectId;
-        private readonly HashSet<NetworkObject> _newObjects = new HashSet<NetworkObject>();
-        private readonly Dictionary<int, NetworkObject> _existObjects = new Dictionary<int, NetworkObject>();
+        private readonly Dictionary<int, NetworkObject> _networkObjects = new Dictionary<int, NetworkObject>();
 
         public void SpawnNetworkObject(NetworkObject networkObject, int ownerId)
         {
-            _newObjects.Add(networkObject);
-            networkObject.NetworkStart(false, ownerId, _allocateNetworkObjectId++);
+            var networkObjectId = _allocateNetworkObjectId++;
+            _networkObjects[networkObjectId] = networkObject;
+            networkObject.NetworkStart(false, ownerId, networkObjectId);
         }
 
         internal void UpdateNetworkObject(ref DataStreamReader reader)
         {
-            var networkId = reader.ReadInt();
-            var networkObject = _existObjects[networkId];
+            var networkObjectId = reader.ReadInt();
+            var networkObject = _networkObjects[networkObjectId];
             var changeBehaviourCount = reader.ReadInt();
             while (changeBehaviourCount-- > 0)
             {
@@ -42,8 +42,12 @@ namespace Netcode.Core
             var prefabId = reader.ReadInt();
             var ownerId = reader.ReadInt();
             var networkObjectId = reader.ReadInt();
-            var alreadySpawn = _existObjects.TryGetValue(networkObjectId, out var networkObject);
-            if (!alreadySpawn)
+            var alreadySpawn = _networkObjects.TryGetValue(networkObjectId, out var networkObject);
+            if (alreadySpawn)
+            {
+                Debug.LogError($"NetworkObject already spawn: {networkObjectId}");
+            }
+            else
             {
                 networkObject = NetworkPrefabLoader.Instantiate(prefabId);
             }
@@ -58,23 +62,21 @@ namespace Netcode.Core
                     }
                 }
             }
-
-            if (!alreadySpawn)
-            {
-                _existObjects[networkObjectId] = networkObject;
-                networkObject.NetworkStart(true, ownerId, networkObjectId);
-            }
+            if (alreadySpawn) return;
+            _networkObjects[networkObjectId] = networkObject;
+            networkObject.NetworkStart(true, ownerId, networkObjectId);
         }
 
         internal void BroadcastUpdateNetworkObject(int clientId, NetworkDriver driver, IReadOnlyList<ClientInfo> clientConnections)
         {
-            foreach (var networkObject in _existObjects.Values)
+            foreach (var networkObject in _networkObjects.Values)
             {
                 var changedVariable = networkObject.CalculateChangedVariable(clientId);
                 if (changedVariable.Count == 0) continue;
                 foreach (var client in clientConnections)
                 {
                     if (!client.IsConnected) continue;
+                    if (!networkObject.CheckObjectVisibility(client.ClientId)) continue;
                     driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.UpdateObject);
                     writer.WriteInt(networkObject.NetworkObjectId);
@@ -93,7 +95,7 @@ namespace Netcode.Core
                 }
             }
 
-            foreach (var networkObject in _existObjects.Values)
+            foreach (var networkObject in _networkObjects.Values)
             {
                 foreach (var behaviour in networkObject.NetworkBehaviours)
                 {
@@ -105,54 +107,16 @@ namespace Netcode.Core
             }
         }
 
-        internal void BroadcastSpawnNetworkObject(NetworkDriver driver, IReadOnlyList<ClientInfo> clientConnections)
+        internal void BroadcastSpawnNetworkObject(NetworkDriver driver, IEnumerable<ClientInfo> clients)
         {
-            foreach (var networkObject in _newObjects)
+            foreach (var client in clients)
             {
-                foreach (var client in clientConnections)
+                if (!client.IsConnected) continue;
+                foreach (var networkObject in _networkObjects.Values)
                 {
-                    if (!client.IsConnected) continue;
-                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
-                    writer.WriteByte((byte)NetworkAction.SpawnObject);
-                    writer.WriteInt(networkObject.PrefabId);
-                    writer.WriteInt(networkObject.OwnerId);
-                    writer.WriteInt(networkObject.NetworkObjectId);
-                    if (networkObject.NetworkBehaviours != null)
-                    {
-                        foreach (var networkBehaviour in networkObject.NetworkBehaviours)
-                        {
-                            foreach (var t in networkBehaviour.NetworkVariables)
-                            {
-                                t.Serialize(ref writer);
-                            }
-                        }
-                    }
-                    driver.EndSend(writer);
-                }
-
-                _existObjects[networkObject.NetworkObjectId] = networkObject;
-            }
-
-            foreach (var networkObject in _newObjects)
-            {
-                foreach (var behaviour in networkObject.NetworkBehaviours)
-                {
-                    foreach (var variable in behaviour.NetworkVariables)
-                    {
-                        variable.ClearChange();
-                    }
-                }
-            }
-            _newObjects.Clear();
-        }
-
-        internal void BroadcastAllNetworkObject(NetworkDriver driver, IReadOnlyList<ClientInfo> clientConnections)
-        {
-            foreach (var networkObject in _existObjects.Values)
-            {
-                foreach (var client in clientConnections)
-                {
-                    if (!client.IsConnected) continue;
+                    if (!networkObject.CheckObjectVisibility(client.ClientId)) continue;
+                    if (client.VisibleObjects.Contains(networkObject.NetworkObjectId)) continue;
+                    client.VisibleObjects.Add(networkObject.NetworkObjectId);
                     driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.SpawnObject);
                     writer.WriteInt(networkObject.PrefabId);
@@ -175,18 +139,12 @@ namespace Netcode.Core
 
         internal void Clear()
         {
-            foreach (var networkObject in _newObjects)
+            foreach (var networkObject in _networkObjects.Values)
             {
                 if (networkObject == null) continue;
                 Object.Destroy(networkObject.gameObject);
             }
-            _newObjects.Clear();
-            foreach (var networkObject in _existObjects.Values)
-            {
-                if (networkObject == null) continue;
-                Object.Destroy(networkObject.gameObject);
-            }
-            _existObjects.Clear();
+            _networkObjects.Clear();
             _allocateNetworkObjectId = 0;
         }
         

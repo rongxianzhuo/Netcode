@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Networking.Transport;
 
 namespace Netcode.Core
@@ -6,6 +7,8 @@ namespace Netcode.Core
     {
 
         public readonly int ClientId;
+
+        public readonly HashSet<int> VisibleObjects = new HashSet<int>();
         
         public NetworkConnection Connection { get; private set; }
 
@@ -21,13 +24,13 @@ namespace Netcode.Core
         {
             if (!Connection.IsCreated) return;
             Connection.Disconnect(driver);
-            Connection = default;
+            Disconnect();
         }
 
         public void Disconnect()
         {
-            if (!Connection.IsCreated) return;
             Connection = default;
+            VisibleObjects.Clear();
         }
 
     }

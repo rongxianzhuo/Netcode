@@ -17,8 +17,7 @@ namespace Netcode.Core
         public readonly NetcodeSettings Settings = new NetcodeSettings();
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         
-        private readonly List<ClientInfo> _oldConnections = new List<ClientInfo>();
-        private readonly List<ClientInfo> _newConnections = new List<ClientInfo>();
+        private readonly List<ClientInfo> _clientConnections = new List<ClientInfo>();
         private readonly List<NetworkConnection> _pendingClientConnections = new List<NetworkConnection>();
 
         private NetworkDriver _driver;
@@ -30,17 +29,11 @@ namespace Netcode.Core
         {
             if (!IsRunning) return;
 
-            foreach (var connection in _oldConnections)
+            foreach (var connection in _clientConnections)
             {
                 connection.Disconnect(_driver);
             }
-            _oldConnections.Clear();
-
-            foreach (var connection in _newConnections)
-            {
-                connection.Disconnect(_driver);
-            }
-            _newConnections.Clear();
+            _clientConnections.Clear();
                 
             foreach (var connection in _pendingClientConnections)
             {
@@ -94,8 +87,8 @@ namespace Netcode.Core
                     case NetworkEvent.Type.Data:
                         if (stream.ReadLong() == ApprovalToken)
                         {
-                            var client = new ClientInfo(_oldConnections.Count + _newConnections.Count + 1, connection);
-                            _newConnections.Add(client);
+                            var client = new ClientInfo(_clientConnections.Count + 1, connection);
+                            _clientConnections.Add(client);
                             _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
                             writer.WriteByte((byte)NetworkAction.ConnectionApproval);
                             writer.WriteInt(client.ClientId);
@@ -121,14 +114,9 @@ namespace Netcode.Core
                 _pendingClientConnections.RemoveAt(i);
             }
 
-            for (var i = _oldConnections.Count - 1; i >= 0; i--)
+            for (var i = _clientConnections.Count - 1; i >= 0; i--)
             {
-                HandleNetworkEvent(_oldConnections[i]);
-            }
-
-            for (var i = _newConnections.Count - 1; i >= 0; i--)
-            {
-                HandleNetworkEvent(_newConnections[i]);
+                HandleNetworkEvent(_clientConnections[i]);
             }
 
             if (Time.realtimeSinceStartup - _sendMessageTime < Settings.serverSendInterval)
@@ -138,11 +126,8 @@ namespace Netcode.Core
 
             _sendMessageTime = Time.realtimeSinceStartup;
 
-            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _oldConnections);
-            ObjectManager.BroadcastSpawnNetworkObject(_driver, _oldConnections);
-            ObjectManager.BroadcastAllNetworkObject(_driver, _newConnections);
-            _oldConnections.AddRange(_newConnections);
-            _newConnections.Clear();
+            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
+            ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
         }
 
         private void HandleNetworkEvent(ClientInfo client)
