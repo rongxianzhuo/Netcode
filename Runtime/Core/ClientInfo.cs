@@ -12,6 +12,8 @@ namespace Netcode.Core
         
         public NetworkConnection Connection { get; private set; }
 
+        public bool IsClient => ClientId != ServerNetworkManager.ClientId;
+
         public bool IsConnected => Connection.IsCreated;
 
         public ClientInfo(int clientId, NetworkConnection connection)

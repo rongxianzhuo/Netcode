@@ -28,13 +28,16 @@ namespace Netcode.Core
 
         public IReadOnlyList<NetworkBehaviour> NetworkBehaviours => _networkBehaviours;
 
-        internal Dictionary<int, IReadOnlyDictionary<int, INetworkVariable>> CalculateChangedVariable(int clientId)
+        internal Dictionary<int, IReadOnlyDictionary<int, INetworkVariable>> CalculateSendVariable(int clientId
+            , int targetClientId
+            , bool excludeNotChangeVariable)
         {
             _changedNetworkBehaviour.Clear();
             for (var i = 0; i < _networkBehaviours.Length; i++)
             {
                 var behaviour = _networkBehaviours[i];
-                var changeVariable = behaviour.CalculateChangedVariable(clientId);
+                var changeVariable = 
+                    behaviour.CalculateSendVariable(clientId, targetClientId, excludeNotChangeVariable);
                 if (changeVariable.Count == 0) continue;
                 _changedNetworkBehaviour[i] = changeVariable;
             }

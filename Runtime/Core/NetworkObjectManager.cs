@@ -52,14 +52,16 @@ namespace Netcode.Core
                 networkObject = NetworkPrefabLoader.Instantiate(prefabId);
             }
             networkObject.name = "Client";
-            if (networkObject.NetworkBehaviours != null)
+            
+            var changeBehaviourCount = reader.ReadInt();
+            while (changeBehaviourCount-- > 0)
             {
-                foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+                var networkBehaviour = networkObject.NetworkBehaviours[reader.ReadInt()];
+                var changeVariableCount = reader.ReadInt();
+                while (changeVariableCount-- > 0)
                 {
-                    foreach (var t in networkBehaviour.NetworkVariables)
-                    {
-                        t.Deserialize(ref reader);
-                    }
+                    var networkVariable = networkBehaviour.NetworkVariables[reader.ReadInt()];
+                    networkVariable.Deserialize(ref reader);
                 }
             }
             if (alreadySpawn) return;
@@ -71,12 +73,16 @@ namespace Netcode.Core
         {
             foreach (var networkObject in _networkObjects.Values)
             {
-                var changedVariable = networkObject.CalculateChangedVariable(clientId);
-                if (changedVariable.Count == 0) continue;
                 foreach (var client in clientConnections)
                 {
                     if (!client.IsConnected) continue;
                     if (!networkObject.CheckObjectVisibility(client.ClientId)) continue;
+                    if (client.IsClient && !client.VisibleObjects.Contains(networkObject.NetworkObjectId)) continue;
+                    var changedVariable = 
+                        networkObject.CalculateSendVariable(clientId
+                            , client.ClientId
+                            , true);
+                    if (changedVariable.Count == 0) continue;
                     driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.UpdateObject);
                     writer.WriteInt(networkObject.NetworkObjectId);
@@ -122,13 +128,21 @@ namespace Netcode.Core
                     writer.WriteInt(networkObject.PrefabId);
                     writer.WriteInt(networkObject.OwnerId);
                     writer.WriteInt(networkObject.NetworkObjectId);
-                    if (networkObject.NetworkBehaviours != null)
+                    var changedVariable = 
+                        networkObject.CalculateSendVariable(ServerNetworkManager.ClientId
+                            , client.ClientId
+                            , false);
+                    writer.WriteInt(changedVariable.Count);
+                    if (changedVariable.Count > 0)
                     {
-                        foreach (var networkBehaviour in networkObject.NetworkBehaviours)
+                        foreach (var behaviour in changedVariable)
                         {
-                            foreach (var t in networkBehaviour.NetworkVariables)
+                            writer.WriteInt(behaviour.Key);
+                            writer.WriteInt(behaviour.Value.Count);
+                            foreach (var variable in behaviour.Value)
                             {
-                                t.Serialize(ref writer);
+                                writer.WriteInt(variable.Key);
+                                variable.Value.Serialize(ref writer);
                             }
                         }
                     }

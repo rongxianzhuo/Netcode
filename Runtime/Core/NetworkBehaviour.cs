@@ -11,36 +11,42 @@ namespace Netcode.Core
 
         private readonly List<INetworkVariable> _networkVariables = new List<INetworkVariable>();
 
-        private readonly Dictionary<int, INetworkVariable> _changedNetworkVariable =
+        private readonly Dictionary<int, INetworkVariable> _sendNetworkVariable =
             new Dictionary<int, INetworkVariable>();
 
         public bool IsClient => MyNetworkObject.IsClient;
+
+        public int OwnerId => MyNetworkObject.OwnerId;
 
         public NetworkObject MyNetworkObject { get; private set; }
 
         public IReadOnlyList<INetworkVariable> NetworkVariables => _networkVariables;
 
-        private static bool CheckPermission(int clientId, VariablePermission permission, bool isOwner)
+        private bool CheckSendPermission(INetworkVariable variable, int myClientId, int targetClientId)
         {
-            if (permission == VariablePermission.All) return true;
-            if (clientId == 0) return true;
-            return permission == VariablePermission.OwnerOnly && isOwner;
+            if (myClientId == ServerNetworkManager.ClientId)
+            {
+                return variable.ReadPermission == VariablePermission.All ||
+                       (variable.ReadPermission == VariablePermission.OwnerOnly && OwnerId == targetClientId);
+            }
+            if (variable.WritePermission == VariablePermission.All) return true;
+            if (variable.WritePermission == VariablePermission.OwnerOnly && myClientId == OwnerId) return true;
+            return false;
         }
 
-        internal IReadOnlyDictionary<int, INetworkVariable> CalculateChangedVariable(int clientId)
+        internal IReadOnlyDictionary<int, INetworkVariable> CalculateSendVariable(int myClientId
+            , int targetClientId
+            , bool excludeNotChangeVariable)
         {
-            _changedNetworkVariable.Clear();
+            _sendNetworkVariable.Clear();
             for (var i = 0; i < _networkVariables.Count; i++)
             {
                 var variable = _networkVariables[i];
-                if (!CheckPermission(clientId, variable.WritePermission, MyNetworkObject.OwnerId == clientId))
-                {
-                    continue;
-                }
-                if (variable.IsChanged) _changedNetworkVariable[i] = variable;
+                if (excludeNotChangeVariable && !variable.IsChanged) continue;
+                if (!CheckSendPermission(variable, myClientId, targetClientId)) continue;
+                _sendNetworkVariable[i] = variable;
             }
-
-            return _changedNetworkVariable;
+            return _sendNetworkVariable;
         }
 
         internal void NetworkStart(NetworkObject networkObject)

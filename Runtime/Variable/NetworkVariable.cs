@@ -41,7 +41,7 @@ namespace Netcode.Variable
         }
 
         public NetworkVariable(T defaultValue
-            , VariablePermission readPermission=VariablePermission.ServerOnly
+            , VariablePermission readPermission=VariablePermission.All
             , VariablePermission writePermission=VariablePermission.ServerOnly)
         {
             _value = defaultValue;
