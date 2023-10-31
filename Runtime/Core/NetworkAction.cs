@@ -5,6 +5,6 @@ namespace Netcode.Core
         ConnectionApproval,
         SpawnObject,
         UpdateObject,
-        RemoveObject
+        DestroyObject
     }
 }

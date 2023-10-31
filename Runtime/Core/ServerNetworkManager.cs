@@ -14,6 +14,8 @@ namespace Netcode.Core
 
         public event Action<int> ClientConnectEvent;
 
+        public event Action<int> ClientDisconnectEvent;
+
         public readonly NetcodeSettings Settings = new NetcodeSettings();
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         
@@ -128,6 +130,7 @@ namespace Netcode.Core
 
             ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
             ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
+            ObjectManager.BroadcastDestroyNetworkObject(_driver, _clientConnections);
         }
 
         private void HandleNetworkEvent(ClientInfo client)
@@ -142,6 +145,7 @@ namespace Netcode.Core
                         break;
                     case NetworkEvent.Type.Disconnect:
                         client.Disconnect();
+                        ClientDisconnectEvent?.Invoke(client.ClientId);
                         break;
                     case NetworkEvent.Type.Empty:
                         break;
@@ -159,7 +163,7 @@ namespace Netcode.Core
             {
                 case NetworkAction.SpawnObject:
                     break;
-                case NetworkAction.RemoveObject:
+                case NetworkAction.DestroyObject:
                     break;
                 case NetworkAction.UpdateObject:
                     ObjectManager.UpdateNetworkObject(ref reader);

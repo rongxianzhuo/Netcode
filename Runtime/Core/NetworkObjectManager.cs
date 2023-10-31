@@ -11,6 +11,7 @@ namespace Netcode.Core
         public INetworkPrefabLoader NetworkPrefabLoader;
         
         private int _allocateNetworkObjectId;
+        private readonly List<int> _toDestroyNetworkObjectIds = new List<int>();
         private readonly Dictionary<int, NetworkObject> _networkObjects = new Dictionary<int, NetworkObject>();
 
         public void SpawnNetworkObject(NetworkObject networkObject, int ownerId)
@@ -18,6 +19,22 @@ namespace Netcode.Core
             var networkObjectId = _allocateNetworkObjectId++;
             _networkObjects[networkObjectId] = networkObject;
             networkObject.NetworkStart(false, ownerId, networkObjectId);
+        }
+
+        public void DestroyNetworkObject(NetworkObject networkObject)
+        {
+            _networkObjects.Remove(networkObject.NetworkObjectId);
+            Object.Destroy(networkObject.gameObject);
+        }
+
+        public void DestroyNetworkObject(ref DataStreamReader reader)
+        {
+            if (!_networkObjects.TryGetValue(reader.ReadInt(), out var networkObject))
+            {
+                return;
+            }
+            _networkObjects.Remove(networkObject.NetworkObjectId);
+            Object.Destroy(networkObject.gameObject);
         }
 
         internal void UpdateNetworkObject(ref DataStreamReader reader)
@@ -67,6 +84,29 @@ namespace Netcode.Core
             if (alreadySpawn) return;
             _networkObjects[networkObjectId] = networkObject;
             networkObject.NetworkStart(true, ownerId, networkObjectId);
+        }
+
+        internal void BroadcastDestroyNetworkObject(NetworkDriver driver, IEnumerable<ClientInfo> clientConnections)
+        {
+            _toDestroyNetworkObjectIds.Clear();
+            foreach (var client in clientConnections)
+            {
+                if (!client.IsConnected) continue;
+                foreach (var networkObjectId in client.VisibleObjects)
+                {
+                    if (_networkObjects.TryGetValue(networkObjectId, out var networkObject)
+                        && networkObject.CheckObjectVisibility(client.ClientId)) continue;
+                    _toDestroyNetworkObjectIds.Add(networkObjectId);
+                }
+
+                foreach (var networkObjectId in _toDestroyNetworkObjectIds)
+                {
+                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
+                    writer.WriteByte((byte)NetworkAction.DestroyObject);
+                    writer.WriteInt(networkObjectId);
+                    driver.EndSend(writer);
+                }
+            }
         }
 
         internal void BroadcastUpdateNetworkObject(int clientId, NetworkDriver driver, IReadOnlyList<ClientInfo> clientConnections)

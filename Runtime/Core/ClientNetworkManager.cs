@@ -118,7 +118,8 @@ namespace Netcode.Core
                 case NetworkAction.SpawnObject:
                     ObjectManager.SpawnNetworkObject(ref reader);
                     break;
-                case NetworkAction.RemoveObject:
+                case NetworkAction.DestroyObject:
+                    ObjectManager.DestroyNetworkObject(ref reader);
                     break;
                 case NetworkAction.UpdateObject:
                     ObjectManager.UpdateNetworkObject(ref reader);
