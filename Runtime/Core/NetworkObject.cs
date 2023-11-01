@@ -45,6 +45,14 @@ namespace Netcode.Core
             return _changedNetworkBehaviour;
         }
 
+        internal void NetworkInit()
+        {
+            foreach (var behaviour in _networkBehaviours)
+            {
+                behaviour.NetworkInit(this);
+            }
+        }
+
         internal void NetworkStart(bool isClient, int ownerId, int networkId)
         {
             IsClient = isClient;
@@ -52,7 +60,7 @@ namespace Netcode.Core
             NetworkObjectId = networkId;
             foreach (var behaviour in _networkBehaviours)
             {
-                behaviour.NetworkStart(this);
+                behaviour.OnNetworkStart();
             }
         }
 

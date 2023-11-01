@@ -49,19 +49,9 @@ namespace Netcode.Core
             return _sendNetworkVariable;
         }
 
-        internal void NetworkStart(NetworkObject networkObject)
+        internal void NetworkInit(NetworkObject networkObject)
         {
             MyNetworkObject = networkObject;
-            OnNetworkStart();
-        }
-
-        protected virtual void OnNetworkStart()
-        {
-            
-        }
-
-        protected virtual void Awake()
-        {
             var fields = GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             Array.Sort(fields, (info1, info2) => string.Compare(info1.Name, info2.Name, StringComparison.Ordinal));
             var typeOfINetworkVariable = typeof(INetworkVariable);
@@ -70,6 +60,17 @@ namespace Netcode.Core
                 if (!typeOfINetworkVariable.IsAssignableFrom(fieldInfo.FieldType)) continue;
                 _networkVariables.Add((INetworkVariable)fieldInfo.GetValue(this));
             }
+            OnNetworkInit();
+        }
+
+        protected virtual void OnNetworkInit()
+        {
+            
+        }
+
+        public virtual void OnNetworkStart()
+        {
+            
         }
         
     }
