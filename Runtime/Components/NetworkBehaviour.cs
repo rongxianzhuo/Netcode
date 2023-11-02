@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Netcode.Core;
 using Netcode.Variable;
 using UnityEngine;
 
-namespace Netcode.Core
+namespace Netcode.Components
 {
     public class NetworkBehaviour : MonoBehaviour
     {

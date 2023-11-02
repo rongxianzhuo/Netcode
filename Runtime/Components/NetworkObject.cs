@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Netcode.Variable;
 using UnityEngine;
 
-namespace Netcode.Core
+namespace Netcode.Components
 {
     public sealed class NetworkObject : MonoBehaviour
     {

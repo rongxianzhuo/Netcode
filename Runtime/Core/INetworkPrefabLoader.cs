@@ -1,4 +1,6 @@
 
+using Netcode.Components;
+
 namespace Netcode.Core
 {
     public interface INetworkPrefabLoader

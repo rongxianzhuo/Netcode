@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Netcode.Components;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using UnityEngine;
