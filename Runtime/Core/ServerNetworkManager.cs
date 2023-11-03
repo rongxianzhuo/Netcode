@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using UnityEngine;
+using UnityEngine.LowLevel;
 
 namespace Netcode.Core
 {
@@ -46,6 +47,7 @@ namespace Netcode.Core
             ObjectManager.Clear();
             _driver.Dispose();
             _driver = default;
+            NetworkLoopSystem.RemoveNetworkUpdateLoop(Update);
         }
 
         public void StartServer()
@@ -59,9 +61,10 @@ namespace Netcode.Core
             endpoint.Port = 9002;
             if (_driver.Bind(endpoint) != 0) Debug.Log("Failed to bind to port 9002");
             else _driver.Listen();
+            NetworkLoopSystem.AddNetworkUpdateLoop(Update);
         }
 
-        public void Update()
+        private void Update()
         {
             if (!IsRunning) return;
             

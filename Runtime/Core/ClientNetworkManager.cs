@@ -45,6 +45,7 @@ namespace Netcode.Core
             {
                 _driver.Dispose();
                 _driver = default;
+                NetworkLoopSystem.RemoveNetworkUpdateLoop(Update);
             }
         }
 
@@ -56,6 +57,7 @@ namespace Netcode.Core
             }
 
             _driver = NetworkDriver.Create();
+            NetworkLoopSystem.AddNetworkUpdateLoop(Update);
         }
 
         public void ConnectServer()
@@ -66,7 +68,7 @@ namespace Netcode.Core
             ServerInfo = new ClientInfo(ServerNetworkManager.ClientId, _driver.Connect(endpoint));
         }
 
-        public void Update()
+        private void Update()
         {
             if (!IsRunning) return;
             
