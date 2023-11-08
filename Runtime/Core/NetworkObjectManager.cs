@@ -15,12 +15,12 @@ namespace Netcode.Core
         private readonly List<int> _toDestroyNetworkObjectIds = new List<int>();
         private readonly Dictionary<int, NetworkObject> _networkObjects = new Dictionary<int, NetworkObject>();
 
-        public void SpawnNetworkObject(NetworkObject networkObject, int ownerId)
+        public void SpawnNetworkObject(NetworkObject networkObject, int ownerId, int myClientId)
         {
             var networkObjectId = _allocateNetworkObjectId++;
             _networkObjects[networkObjectId] = networkObject;
             networkObject.NetworkInit();
-            networkObject.NetworkStart(false, ownerId, networkObjectId);
+            networkObject.NetworkStart(false, ownerId, networkObjectId, myClientId == ownerId);
         }
 
         public void DestroyNetworkObject(NetworkObject networkObject)
@@ -56,7 +56,7 @@ namespace Netcode.Core
             }
         }
 
-        internal void SpawnNetworkObject(ref DataStreamReader reader)
+        internal void SpawnNetworkObject(int myClientId, ref DataStreamReader reader)
         {
             var prefabId = reader.ReadInt();
             var ownerId = reader.ReadInt();
@@ -86,7 +86,7 @@ namespace Netcode.Core
             }
             if (alreadySpawn) return;
             _networkObjects[networkObjectId] = networkObject;
-            networkObject.NetworkStart(true, ownerId, networkObjectId);
+            networkObject.NetworkStart(true, ownerId, networkObjectId, myClientId == ownerId);
         }
 
         internal void BroadcastDestroyNetworkObject(NetworkDriver driver, IEnumerable<ClientInfo> clientConnections)

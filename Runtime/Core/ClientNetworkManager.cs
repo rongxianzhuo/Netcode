@@ -118,7 +118,7 @@ namespace Netcode.Core
             switch (action)
             {
                 case NetworkAction.SpawnObject:
-                    ObjectManager.SpawnNetworkObject(ref reader);
+                    ObjectManager.SpawnNetworkObject(ClientId, ref reader);
                     break;
                 case NetworkAction.DestroyObject:
                     ObjectManager.DestroyNetworkObject(ref reader);

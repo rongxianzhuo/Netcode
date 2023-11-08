@@ -19,6 +19,8 @@ namespace Netcode.Components
 
         public int OwnerId => MyNetworkObject.OwnerId;
 
+        public bool IsOwner => MyNetworkObject.IsOwner;
+
         public NetworkObject MyNetworkObject { get; private set; }
 
         public IReadOnlyList<INetworkVariable> NetworkVariables => _networkVariables;
@@ -61,10 +63,10 @@ namespace Netcode.Components
                 if (!typeOfINetworkVariable.IsAssignableFrom(fieldInfo.FieldType)) continue;
                 _networkVariables.Add((INetworkVariable)fieldInfo.GetValue(this));
             }
-            OnNetworkInit();
+            OnNetworkInit(_networkVariables);
         }
 
-        protected virtual void OnNetworkInit()
+        protected virtual void OnNetworkInit(List<INetworkVariable> networkVariables)
         {
             
         }

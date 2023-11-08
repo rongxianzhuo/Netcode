@@ -13,6 +13,19 @@ namespace Netcode.Variable
 
     }
 
+    public class BoolNetworkVariableSerializer : INetworkVariableSerializer<bool>
+    {
+        public void Serialize(ref DataStreamWriter writer, bool value)
+        {
+            writer.WriteByte(value ? (byte)1 : (byte)0);
+        }
+
+        public bool Deserialize(ref DataStreamReader reader)
+        {
+            return reader.ReadByte() == 1;
+        }
+    }
+
     public class IntNetworkVariableSerializer : INetworkVariableSerializer<int>
     {
         public void Serialize(ref DataStreamWriter writer, int value)

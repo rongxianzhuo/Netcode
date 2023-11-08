@@ -20,6 +20,8 @@ namespace Netcode.Components
 
         public int OwnerId { get; private set; }
 
+        public bool IsOwner { get; private set; }
+
         public int PrefabId => prefabId;
 
         private NetworkBehaviour[] _networkBehaviours = Array.Empty<NetworkBehaviour>();
@@ -53,8 +55,9 @@ namespace Netcode.Components
             }
         }
 
-        internal void NetworkStart(bool isClient, int ownerId, int networkId)
+        internal void NetworkStart(bool isClient, int ownerId, int networkId, bool isOwner)
         {
+            IsOwner = isOwner;
             IsClient = isClient;
             OwnerId = ownerId;
             NetworkObjectId = networkId;

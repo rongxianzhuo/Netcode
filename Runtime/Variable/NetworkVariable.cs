@@ -9,6 +9,7 @@ namespace Netcode.Variable
         
         static NetworkVariable()
         {
+            NetworkVariable<bool>.Serializer = new BoolNetworkVariableSerializer();
             NetworkVariable<int>.Serializer = new IntNetworkVariableSerializer();
             NetworkVariable<float>.Serializer = new FloatNetworkVariableSerializer();
             NetworkVariable<Vector3>.Serializer = new Vector3NetworkVariableSerializer();
