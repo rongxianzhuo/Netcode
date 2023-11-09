@@ -7,10 +7,10 @@ namespace Netcode.Components
     public class NetworkTransform : NetworkBehaviour
     {
 
-        public readonly NetworkVariable<Vector3> Position = new NetworkVariable<Vector3>(default
+        private readonly NetworkVariable<Vector3> _networkPosition = new NetworkVariable<Vector3>(default
             , writePermission: VariablePermission.ServerOnly);
 
-        public readonly NetworkVariable<Vector3> Rotation = new NetworkVariable<Vector3>(default
+        private readonly NetworkVariable<Vector3> _networkRotation = new NetworkVariable<Vector3>(default
             , writePermission: VariablePermission.ServerOnly);
 
         public float interpolateFactor = 0.15f;
@@ -18,14 +18,22 @@ namespace Netcode.Components
         public override void OnNetworkStart()
         {
             base.OnNetworkStart();
-            transform.position = Position.Value;
+            transform.position = _networkPosition.Value;
         }
 
         private void Update()
         {
-            transform.position = IsClient ? Vector3.Lerp(transform.position, Position.Value, interpolateFactor) : Position.Value;
-            var rotation = Quaternion.Euler(Rotation.Value);
-            transform.rotation = IsClient ? Quaternion.Slerp(transform.rotation, rotation, interpolateFactor) : rotation;
+            if (IsClient)
+            {
+                transform.position = Vector3.Lerp(transform.position, _networkPosition.Value, interpolateFactor);
+                var rotation = Quaternion.Euler(_networkRotation.Value);
+                transform.rotation = Quaternion.Slerp(transform.rotation, rotation, interpolateFactor);
+            }
+            else
+            {
+                _networkPosition.Value = transform.position;
+                _networkRotation.Value = transform.eulerAngles;
+            }
         }
     }
 }
