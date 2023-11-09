@@ -18,7 +18,16 @@ namespace Netcode.Components
         public override void OnNetworkStart()
         {
             base.OnNetworkStart();
-            transform.position = _networkPosition.Value;
+            if (IsClient)
+            {
+                transform.position = _networkPosition.Value;
+                transform.rotation = Quaternion.Euler(_networkRotation.Value);
+            }
+            else
+            {
+                _networkPosition.Value = transform.position;
+                _networkRotation.Value = transform.eulerAngles;
+            }
         }
 
         private void Update()

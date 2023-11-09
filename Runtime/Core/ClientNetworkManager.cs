@@ -60,11 +60,10 @@ namespace Netcode.Core
             NetworkLoopSystem.AddNetworkUpdateLoop(Update);
         }
 
-        public void ConnectServer()
+        public void ConnectServer(string address, ushort port)
         {
             if (ServerInfo.IsConnected) ServerInfo.Disconnect(_driver);
-            var endpoint = NetworkEndpoint.LoopbackIpv4;
-            endpoint.Port = 9002;
+            var endpoint = NetworkEndpoint.Parse(address, port);
             ServerInfo = new ClientInfo(ServerNetworkManager.ClientId, _driver.Connect(endpoint));
         }
 

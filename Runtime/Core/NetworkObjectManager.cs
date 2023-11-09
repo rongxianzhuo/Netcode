@@ -68,7 +68,7 @@ namespace Netcode.Core
             }
             else
             {
-                networkObject = NetworkPrefabLoader.Instantiate(prefabId);
+                networkObject = NetworkPrefabLoader.Instantiate(prefabId, Vector3.zero, Quaternion.identity);
                 networkObject.name = "Client";
                 networkObject.NetworkInit();
             }
