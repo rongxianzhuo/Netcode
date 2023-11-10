@@ -8,6 +8,8 @@ namespace Netcode.Core
     public class ClientNetworkManager
     {
 
+        public event Action<int> ClientConnectEvent;
+
         public readonly NetcodeSettings Settings = new NetcodeSettings();
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         private readonly ClientInfo[] _serverConnection = new []{new ClientInfo(0, default)};
@@ -127,6 +129,7 @@ namespace Netcode.Core
                     break;
                 case NetworkAction.ConnectionApproval:
                     ClientId = reader.ReadInt();
+                    ClientConnectEvent?.Invoke(ClientId);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(action), action, null);
