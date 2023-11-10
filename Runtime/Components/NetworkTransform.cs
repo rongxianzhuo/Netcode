@@ -14,6 +14,7 @@ namespace Netcode.Components
             , writePermission: VariablePermission.ServerOnly);
 
         public float interpolateFactor = 0.15f;
+        public float blinkDistance = 3;
 
         public override void OnNetworkStart()
         {
@@ -34,9 +35,18 @@ namespace Netcode.Components
         {
             if (IsClient)
             {
-                transform.position = Vector3.Lerp(transform.position, _networkPosition.Value, interpolateFactor);
-                var rotation = Quaternion.Euler(_networkRotation.Value);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotation, interpolateFactor);
+                var distance = Vector3.Distance(transform.position, _networkPosition.Value);
+                if (distance > blinkDistance)
+                {
+                    transform.position = _networkPosition.Value;
+                    transform.rotation = Quaternion.Euler(_networkRotation.Value);
+                }
+                else
+                {
+                    transform.position = Vector3.Lerp(transform.position, _networkPosition.Value, interpolateFactor);
+                    var rotation = Quaternion.Euler(_networkRotation.Value);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, rotation, interpolateFactor);
+                }
             }
             else
             {
