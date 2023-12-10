@@ -9,6 +9,7 @@ namespace Netcode.Core
     public class NetworkObjectManager
     {
 
+        public object AttachObject;
         public INetworkPrefabLoader NetworkPrefabLoader;
         
         private int _allocateNetworkObjectId;

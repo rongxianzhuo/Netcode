@@ -15,6 +15,8 @@ namespace Netcode.Components
         private readonly Dictionary<int, INetworkVariable> _sendNetworkVariable =
             new Dictionary<int, INetworkVariable>();
 
+        public bool IsNetworkStarted => MyNetworkObject != null && MyNetworkObject.IsNetworkStarted;
+
         public bool IsClient => MyNetworkObject.IsClient;
 
         public int OwnerId => MyNetworkObject.OwnerId;

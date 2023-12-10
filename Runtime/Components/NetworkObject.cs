@@ -18,6 +18,8 @@ namespace Netcode.Components
         [SerializeField]
         private int prefabId;
 
+        public bool IsNetworkStarted { get; private set; }
+
         public int NetworkObjectId { get; private set; }
 
         public int OwnerId { get; private set; }
@@ -90,6 +92,7 @@ namespace Netcode.Components
             IsOwner = isOwner;
             OwnerId = ownerId;
             NetworkObjectId = networkId;
+            IsNetworkStarted = true;
             foreach (var behaviour in _networkBehaviours)
             {
                 behaviour.OnNetworkStart();
