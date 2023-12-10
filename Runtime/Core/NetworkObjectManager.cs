@@ -19,8 +19,8 @@ namespace Netcode.Core
         {
             var networkObjectId = _allocateNetworkObjectId++;
             _networkObjects[networkObjectId] = networkObject;
-            networkObject.NetworkInit(this);
-            networkObject.NetworkStart(false, ownerId, networkObjectId, myClientId == ownerId);
+            networkObject.NetworkInit(false, this);
+            networkObject.NetworkStart(ownerId, networkObjectId, myClientId == ownerId);
         }
 
         public void DestroyNetworkObject(NetworkObject networkObject)
@@ -70,7 +70,7 @@ namespace Netcode.Core
             {
                 networkObject = NetworkPrefabLoader.Instantiate(prefabId, Vector3.zero, Quaternion.identity);
                 networkObject.name = "Client";
-                networkObject.NetworkInit(this);
+                networkObject.NetworkInit(true, this);
             }
             
             var changeBehaviourCount = reader.ReadInt();
@@ -86,7 +86,7 @@ namespace Netcode.Core
             }
             if (alreadySpawn) return;
             _networkObjects[networkObjectId] = networkObject;
-            networkObject.NetworkStart(true, ownerId, networkObjectId, myClientId == ownerId);
+            networkObject.NetworkStart(ownerId, networkObjectId, myClientId == ownerId);
         }
 
         internal void BroadcastDestroyNetworkObject(NetworkDriver driver, IEnumerable<ClientInfo> clientConnections)
