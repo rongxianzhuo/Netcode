@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Netcode.Core;
 using Netcode.Variable;
 using UnityEngine;
 
@@ -47,11 +48,11 @@ namespace Netcode.Components
             return _changedNetworkBehaviour;
         }
 
-        internal void NetworkInit()
+        internal void NetworkInit(NetworkObjectManager objectManager)
         {
             foreach (var behaviour in _networkBehaviours)
             {
-                behaviour.NetworkInit(this);
+                behaviour.NetworkInit(objectManager, this);
             }
         }
 

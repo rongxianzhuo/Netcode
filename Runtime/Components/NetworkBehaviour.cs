@@ -23,6 +23,8 @@ namespace Netcode.Components
 
         public NetworkObject MyNetworkObject { get; private set; }
 
+        public NetworkObjectManager ObjectManager { get; private set; }
+
         public IReadOnlyList<INetworkVariable> NetworkVariables => _networkVariables;
 
         private bool CheckSendPermission(INetworkVariable variable, int myClientId, int targetClientId)
@@ -52,8 +54,9 @@ namespace Netcode.Components
             return _sendNetworkVariable;
         }
 
-        internal void NetworkInit(NetworkObject networkObject)
+        internal void NetworkInit(NetworkObjectManager objectManager, NetworkObject networkObject)
         {
+            ObjectManager = objectManager;
             MyNetworkObject = networkObject;
             var fields = GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             Array.Sort(fields, (info1, info2) => string.Compare(info1.Name, info2.Name, StringComparison.Ordinal));

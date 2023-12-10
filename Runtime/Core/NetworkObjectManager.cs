@@ -19,7 +19,7 @@ namespace Netcode.Core
         {
             var networkObjectId = _allocateNetworkObjectId++;
             _networkObjects[networkObjectId] = networkObject;
-            networkObject.NetworkInit();
+            networkObject.NetworkInit(this);
             networkObject.NetworkStart(false, ownerId, networkObjectId, myClientId == ownerId);
         }
 
@@ -70,7 +70,7 @@ namespace Netcode.Core
             {
                 networkObject = NetworkPrefabLoader.Instantiate(prefabId, Vector3.zero, Quaternion.identity);
                 networkObject.name = "Client";
-                networkObject.NetworkInit();
+                networkObject.NetworkInit(this);
             }
             
             var changeBehaviourCount = reader.ReadInt();
