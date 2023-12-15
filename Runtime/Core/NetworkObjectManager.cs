@@ -16,12 +16,12 @@ namespace Netcode.Core
         private readonly List<int> _toDestroyNetworkObjectIds = new List<int>();
         private readonly Dictionary<int, NetworkObject> _networkObjects = new Dictionary<int, NetworkObject>();
 
-        public void SpawnNetworkObject(NetworkObject networkObject, int ownerId, int myClientId)
+        public void SpawnNetworkObject(NetworkObject networkObject, int ownerId)
         {
             var networkObjectId = _allocateNetworkObjectId++;
             _networkObjects[networkObjectId] = networkObject;
             networkObject.NetworkInit(false, this);
-            networkObject.NetworkStart(ownerId, networkObjectId, myClientId == ownerId);
+            networkObject.NetworkStart(ownerId, networkObjectId, ServerNetworkManager.ClientId == ownerId);
         }
 
         public void DestroyNetworkObject(NetworkObject networkObject)
