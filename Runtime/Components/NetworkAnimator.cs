@@ -11,6 +11,8 @@ namespace Netcode.Components
         private readonly Dictionary<int, NetworkVariable<bool>> _boolParameter =
             new Dictionary<int, NetworkVariable<bool>>();
 
+        private readonly NetworkVariable<float> _speedVariable = new NetworkVariable<float>(0);
+
         private Animator _animator;
         private AnimatorControllerParameter[] _animatorControllerParameters;
 
@@ -55,6 +57,8 @@ namespace Netcode.Components
                 {
                     _animator.SetBool(_animatorControllerParameters[pair.Key].name, pair.Value.Value);
                 }
+
+                _animator.speed = _speedVariable.Value;
             }
             else
             {
@@ -62,6 +66,8 @@ namespace Netcode.Components
                 {
                     pair.Value.Value = _animator.GetBool(_animatorControllerParameters[pair.Key].name);
                 }
+
+                _speedVariable.Value = _animator.speed;
             }
         }
     }
