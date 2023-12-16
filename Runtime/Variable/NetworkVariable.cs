@@ -6,6 +6,8 @@ namespace Netcode.Variable
 {
     public class NetworkVariable<T>: INetworkVariable where T : IEquatable<T>
     {
+
+        public event Action<T, T> ValueChangedEvent;
         
         static NetworkVariable()
         {
@@ -18,6 +20,17 @@ namespace Netcode.Variable
         private static readonly INetworkVariableSerializer<T> Serializer;
 
         public bool IsChanged { get; private set; }
+
+        public void AddListenerAndCall(Action<T, T> action)
+        {
+            ValueChangedEvent += action;
+            action(_value, _value);
+        }
+
+        public void RemoveListener(Action<T, T> action)
+        {
+            ValueChangedEvent -= action;
+        }
 
         public void ClearChange()
         {
@@ -37,7 +50,9 @@ namespace Netcode.Variable
             {
                 if (_value.Equals(value)) return;
                 IsChanged = true;
+                var old = _value;
                 _value = value;
+                ValueChangedEvent?.Invoke(old, value);
             }
         }
 
@@ -59,7 +74,9 @@ namespace Netcode.Variable
 
         public void Deserialize(ref DataStreamReader reader)
         {
+            var old = _value;
             _value = Serializer.Deserialize(ref reader);
+            ValueChangedEvent?.Invoke(old, _value);
         }
     }
 }
