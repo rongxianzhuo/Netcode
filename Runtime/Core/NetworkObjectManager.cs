@@ -24,12 +24,6 @@ namespace Netcode.Core
             networkObject.NetworkStart(ownerId, networkObjectId, ServerNetworkManager.ClientId == ownerId);
         }
 
-        public void DestroyNetworkObject(NetworkObject networkObject)
-        {
-            _networkObjects.Remove(networkObject.NetworkObjectId);
-            Object.Destroy(networkObject.gameObject);
-        }
-
         public void DestroyNetworkObject(ref DataStreamReader reader)
         {
             if (!_networkObjects.TryGetValue(reader.ReadInt(), out var networkObject))
@@ -37,7 +31,7 @@ namespace Netcode.Core
                 return;
             }
             _networkObjects.Remove(networkObject.NetworkObjectId);
-            Object.Destroy(networkObject.gameObject);
+            if (networkObject != null) Object.Destroy(networkObject.gameObject);
         }
 
         internal void UpdateNetworkObject(ref DataStreamReader reader)
@@ -92,6 +86,16 @@ namespace Netcode.Core
 
         internal void BroadcastDestroyNetworkObject(NetworkDriver driver, IEnumerable<ClientInfo> clientConnections)
         {
+            _toDestroyNetworkObjectIds.Clear();
+            foreach (var pair in _networkObjects)
+            {
+                if (pair.Value == null) _toDestroyNetworkObjectIds.Add(pair.Key);
+            }
+
+            foreach (var id in _toDestroyNetworkObjectIds)
+            {
+                _networkObjects.Remove(id);
+            }
             _toDestroyNetworkObjectIds.Clear();
             foreach (var client in clientConnections)
             {
