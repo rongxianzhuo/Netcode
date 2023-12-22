@@ -65,7 +65,7 @@ namespace Netcode.Core
         protected void UpdateNetworkObject(ref DataStreamReader reader)
         {
             var networkObjectId = reader.ReadInt();
-            var networkObject = _networkObjects[networkObjectId];
+            if (!_networkObjects.TryGetValue(networkObjectId, out var networkObject)) return;
             var changeBehaviourCount = reader.ReadInt();
             while (changeBehaviourCount-- > 0)
             {
@@ -138,7 +138,7 @@ namespace Netcode.Core
                 foreach (var networkObjectId in _toDestroyNetworkObjectIds)
                 {
                     client.VisibleObjects.Remove(networkObjectId);
-                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
+                    driver.BeginSend(ReliableSequencedPipeline, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.DestroyObject);
                     writer.WriteInt(networkObjectId);
                     driver.EndSend(writer);
@@ -200,7 +200,7 @@ namespace Netcode.Core
                     if (!networkObject.CheckObjectVisibility(client.ClientId)) continue;
                     if (client.VisibleObjects.Contains(networkObject.NetworkObjectId)) continue;
                     client.VisibleObjects.Add(networkObject.NetworkObjectId);
-                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
+                    driver.BeginSend(ReliableSequencedPipeline, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.SpawnObject);
                     writer.WriteInt(networkObject.PrefabId);
                     writer.WriteInt(networkObject.OwnerId);
