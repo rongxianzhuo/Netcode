@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using UnityEngine;
-using UnityEngine.LowLevel;
 
 namespace Netcode.Core
 {
-    public sealed class ServerNetworkManager
+    public sealed class ServerNetworkManager : NetworkManager
     {
 
         public const int ClientId = 0;
@@ -23,10 +22,7 @@ namespace Netcode.Core
         private readonly List<ClientInfo> _clientConnections = new List<ClientInfo>();
         private readonly List<NetworkConnection> _pendingClientConnections = new List<NetworkConnection>();
 
-        private NetworkDriver _driver;
         private float _sendMessageTime;
-
-        public bool IsRunning => _driver.IsCreated;
 
         public void StopServer()
         {
@@ -34,19 +30,18 @@ namespace Netcode.Core
 
             foreach (var connection in _clientConnections)
             {
-                connection.Disconnect(_driver);
+                connection.Disconnect(Driver);
             }
             _clientConnections.Clear();
                 
             foreach (var connection in _pendingClientConnections)
             {
-                connection.Disconnect(_driver);
+                connection.Disconnect(Driver);
             }
             _pendingClientConnections.Clear();
             
             ObjectManager.Clear();
-            _driver.Dispose();
-            _driver = default;
+            DestroyNetworkDriver();
             NetworkLoopSystem.RemoveNetworkUpdateLoop(Update);
         }
 
@@ -56,11 +51,11 @@ namespace Netcode.Core
             {
                 throw new Exception("Already run");
             }
-            _driver = NetworkDriver.Create();
+            CreateNetworkDriver();
             var endpoint = NetworkEndpoint.AnyIpv4;
             endpoint.Port = 9002;
-            if (_driver.Bind(endpoint) != 0) Debug.Log("Failed to bind to port 9002");
-            else _driver.Listen();
+            if (Driver.Bind(endpoint) != 0) Debug.Log("Failed to bind to port 9002");
+            else Driver.Listen();
             NetworkLoopSystem.AddNetworkUpdateLoop(Update);
         }
 
@@ -68,11 +63,11 @@ namespace Netcode.Core
         {
             if (!IsRunning) return;
             
-            _driver.ScheduleUpdate().Complete();
+            Driver.ScheduleUpdate().Complete();
 
             // Accept new connections
             NetworkConnection c;
-            while ((c = _driver.Accept()) != default)
+            while ((c = Driver.Accept()) != default)
             {
                 _pendingClientConnections.Add(c);
             }
@@ -83,7 +78,7 @@ namespace Netcode.Core
                 var connection = _pendingClientConnections[i];
                 
                 NetworkEvent.Type cmd;
-                if ((cmd = _driver.PopEventForConnection(connection, out var stream)) == NetworkEvent.Type.Empty)
+                if ((cmd = Driver.PopEventForConnection(connection, out var stream)) == NetworkEvent.Type.Empty)
                 {
                     continue;
                 }
@@ -94,15 +89,15 @@ namespace Netcode.Core
                         {
                             var client = new ClientInfo(_clientConnections.Count + 1, connection);
                             _clientConnections.Add(client);
-                            _driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                            Driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
                             writer.WriteByte((byte)NetworkAction.ConnectionApproval);
                             writer.WriteInt(client.ClientId);
-                            _driver.EndSend(writer);
+                            Driver.EndSend(writer);
                             ClientConnectEvent?.Invoke(client.ClientId);
                         }
                         else
                         {
-                            _driver.Disconnect(connection);
+                            Driver.Disconnect(connection);
                         }
                         break;
                     case NetworkEvent.Type.Disconnect:
@@ -111,7 +106,7 @@ namespace Netcode.Core
                         break;
                     case NetworkEvent.Type.Connect:
                         Debug.LogError("Unknown error!");
-                        _driver.Disconnect(connection);
+                        Driver.Disconnect(connection);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -131,15 +126,15 @@ namespace Netcode.Core
 
             _sendMessageTime = Time.realtimeSinceStartup;
 
-            ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
-            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
-            ObjectManager.BroadcastDestroyNetworkObject(_driver, _clientConnections);
+            ObjectManager.BroadcastSpawnNetworkObject(Driver, _clientConnections);
+            ObjectManager.BroadcastUpdateNetworkObject(ClientId, Driver, _clientConnections);
+            ObjectManager.BroadcastDestroyNetworkObject(Driver, _clientConnections);
         }
 
         private void HandleNetworkEvent(ClientInfo client)
         {
             NetworkEvent.Type cmd;
-            while (client.IsConnected && (cmd = _driver.PopEventForConnection(client.Connection, out var stream)) != NetworkEvent.Type.Empty)
+            while (client.IsConnected && (cmd = Driver.PopEventForConnection(client.Connection, out var stream)) != NetworkEvent.Type.Empty)
             {
                 switch (cmd)
                 {

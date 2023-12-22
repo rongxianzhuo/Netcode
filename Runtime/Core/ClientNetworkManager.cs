@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Netcode.Core
 {
-    public class ClientNetworkManager
+    public class ClientNetworkManager : NetworkManager
     {
 
         public event Action<int> ClientConnectEvent;
@@ -14,7 +14,6 @@ namespace Netcode.Core
         public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         private readonly ClientInfo[] _serverConnection = new []{new ClientInfo(0, default)};
 
-        private NetworkDriver _driver;
         private float _sendMessageTime;
 
         private ClientInfo ServerInfo
@@ -22,8 +21,6 @@ namespace Netcode.Core
             get => _serverConnection[0];
             set => _serverConnection[0] = value;
         }
-
-        public bool IsRunning => _driver.IsCreated;
         
         public int ClientId { get; private set; }
 
@@ -33,7 +30,7 @@ namespace Netcode.Core
             
             if (ServerInfo.IsConnected)
             {
-                ServerInfo.Disconnect(_driver);
+                ServerInfo.Disconnect(Driver);
                 ServerInfo = default;
             }
 
@@ -43,12 +40,9 @@ namespace Netcode.Core
         public void StopNetwork()
         {
             Disconnect();
-            if (_driver.IsCreated)
-            {
-                _driver.Dispose();
-                _driver = default;
-                NetworkLoopSystem.RemoveNetworkUpdateLoop(Update);
-            }
+            if (!IsRunning) return;
+            DestroyNetworkDriver();
+            NetworkLoopSystem.RemoveNetworkUpdateLoop(Update);
         }
 
         public void StartClient()
@@ -58,33 +52,33 @@ namespace Netcode.Core
                 throw new Exception("Already run");
             }
 
-            _driver = NetworkDriver.Create();
+            CreateNetworkDriver();
             NetworkLoopSystem.AddNetworkUpdateLoop(Update);
         }
 
         public void ConnectServer(string address, ushort port)
         {
-            if (ServerInfo.IsConnected) ServerInfo.Disconnect(_driver);
+            if (ServerInfo.IsConnected) ServerInfo.Disconnect(Driver);
             var endpoint = NetworkEndpoint.Parse(address, port);
-            ServerInfo = new ClientInfo(ServerNetworkManager.ClientId, _driver.Connect(endpoint));
+            ServerInfo = new ClientInfo(ServerNetworkManager.ClientId, Driver.Connect(endpoint));
         }
 
         private void Update()
         {
             if (!IsRunning) return;
             
-            _driver.ScheduleUpdate().Complete();
+            Driver.ScheduleUpdate().Complete();
 
             NetworkEvent.Type cmd;
-            while (ServerInfo.IsConnected && (cmd = ServerInfo.Connection.PopEvent(_driver, out var stream)) != NetworkEvent.Type.Empty)
+            while (ServerInfo.IsConnected && (cmd = ServerInfo.Connection.PopEvent(Driver, out var stream)) != NetworkEvent.Type.Empty)
             {
                 switch (cmd)
                 {
                     case NetworkEvent.Type.Connect:
                     {
-                        _driver.BeginSend(NetworkPipeline.Null, ServerInfo.Connection, out var writer);
+                        Driver.BeginSend(NetworkPipeline.Null, ServerInfo.Connection, out var writer);
                         writer.WriteLong(ServerNetworkManager.ApprovalToken);
-                        _driver.EndSend(writer);
+                        Driver.EndSend(writer);
                         break;
                     }
                     case NetworkEvent.Type.Data:
@@ -110,7 +104,7 @@ namespace Netcode.Core
 
             if (ClientId > ServerNetworkManager.ClientId)
             {
-                ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _serverConnection);
+                ObjectManager.BroadcastUpdateNetworkObject(ClientId, Driver, _serverConnection);
             }
         }
 

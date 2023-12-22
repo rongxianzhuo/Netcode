@@ -1,4 +1,5 @@
 using System;
+using Netcode.Message;
 using Unity.Collections;
 using UnityEngine;
 
@@ -18,6 +19,8 @@ namespace Netcode.Variable
         }
 
         private static readonly INetworkVariableSerializer<T> Serializer;
+
+        public NetworkDelivery Delivery;
 
         public bool IsChanged { get; private set; }
 
@@ -58,14 +61,14 @@ namespace Netcode.Variable
 
         public NetworkVariable(T defaultValue
             , VariablePermission readPermission=VariablePermission.All
-            , VariablePermission writePermission=VariablePermission.ServerOnly)
+            , VariablePermission writePermission=VariablePermission.ServerOnly
+            , NetworkDelivery delivery=NetworkDelivery.Unreliable)
         {
             _value = defaultValue;
             ReadPermission = readPermission;
             WritePermission = writePermission;
+            Delivery = delivery;
         }
-        
-        
 
         public void Serialize(ref DataStreamWriter writer)
         {
