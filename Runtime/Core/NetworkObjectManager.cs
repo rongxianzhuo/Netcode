@@ -109,6 +109,7 @@ namespace Netcode.Core
 
                 foreach (var networkObjectId in _toDestroyNetworkObjectIds)
                 {
+                    client.VisibleObjects.Remove(networkObjectId);
                     driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
                     writer.WriteByte((byte)NetworkAction.DestroyObject);
                     writer.WriteInt(networkObjectId);

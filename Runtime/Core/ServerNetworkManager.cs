@@ -131,8 +131,8 @@ namespace Netcode.Core
 
             _sendMessageTime = Time.realtimeSinceStartup;
 
-            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
             ObjectManager.BroadcastSpawnNetworkObject(_driver, _clientConnections);
+            ObjectManager.BroadcastUpdateNetworkObject(ClientId, _driver, _clientConnections);
             ObjectManager.BroadcastDestroyNetworkObject(_driver, _clientConnections);
         }
 
