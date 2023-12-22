@@ -75,7 +75,7 @@ namespace Netcode.Core
                 {
                     case NetworkEvent.Type.Connect:
                     {
-                        Driver.BeginSend(NetworkPipeline.Null, ServerInfo.Connection, out var writer);
+                        Driver.BeginSend(ReliableSequencedPipeline, ServerInfo.Connection, out var writer);
                         writer.WriteLong(ServerNetworkManager.ApprovalToken);
                         Driver.EndSend(writer);
                         break;

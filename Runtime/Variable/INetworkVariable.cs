@@ -1,3 +1,4 @@
+using Netcode.Message;
 using Unity.Collections;
 
 namespace Netcode.Variable
@@ -12,6 +13,8 @@ namespace Netcode.Variable
         VariablePermission ReadPermission { get; }
 
         VariablePermission WritePermission { get; }
+
+        NetworkDelivery Delivery { get; }
 
         void Serialize(ref DataStreamWriter writer);
         

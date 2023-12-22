@@ -1,9 +1,12 @@
+using System;
 using System.Collections.Generic;
 using Netcode.Components;
+using Netcode.Message;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Utilities;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Netcode.Core
 {
@@ -19,6 +22,8 @@ namespace Netcode.Core
 
         internal NetworkDriver Driver { get; private set; }
 
+        internal NetworkPipeline UnreliablePipeline { get; private set; }
+
         internal NetworkPipeline ReliableSequencedPipeline { get; private set; }
 
         internal NetworkPipeline UnreliableSequencedPipeline { get; private set; }
@@ -31,9 +36,10 @@ namespace Netcode.Core
             settings.WithSimulatorStageParameters(
                 maxPacketCount: 1000,
                 packetDropPercentage: 10,
-                mode: ApplyMode.AllPackets,
+                mode: ApplyMode.SentPacketsOnly,
                 packetDelayMs: 50);
             Driver = NetworkDriver.Create(settings);
+            UnreliablePipeline = Driver.CreatePipeline(typeof(SimulatorPipelineStage));
             ReliableSequencedPipeline = Driver.CreatePipeline(typeof(ReliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
             UnreliableSequencedPipeline = Driver.CreatePipeline(typeof(UnreliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
         }
@@ -66,17 +72,9 @@ namespace Netcode.Core
         {
             var networkObjectId = reader.ReadInt();
             if (!_networkObjects.TryGetValue(networkObjectId, out var networkObject)) return;
-            var changeBehaviourCount = reader.ReadInt();
-            while (changeBehaviourCount-- > 0)
-            {
-                var networkBehaviour = networkObject.NetworkBehaviours[reader.ReadInt()];
-                var changeVariableCount = reader.ReadInt();
-                while (changeVariableCount-- > 0)
-                {
-                    var networkVariable = networkBehaviour.NetworkVariables[reader.ReadInt()];
-                    networkVariable.Deserialize(ref reader);
-                }
-            }
+            var networkBehaviour = networkObject.NetworkBehaviours[reader.ReadInt()];
+            var networkVariable = networkBehaviour.NetworkVariables[reader.ReadInt()];
+            networkVariable.Deserialize(ref reader);
         }
 
         protected void SpawnNetworkObject(int myClientId, ref DataStreamReader reader)
@@ -160,21 +158,25 @@ namespace Netcode.Core
                             , client.ClientId
                             , true);
                     if (changedVariable.Count == 0) continue;
-                    driver.BeginSend(NetworkPipeline.Null, client.Connection, out var writer);
-                    writer.WriteByte((byte)NetworkAction.UpdateObject);
-                    writer.WriteInt(networkObject.NetworkObjectId);
-                    writer.WriteInt(changedVariable.Count);
                     foreach (var behaviour in changedVariable)
                     {
-                        writer.WriteInt(behaviour.Key);
-                        writer.WriteInt(behaviour.Value.Count);
                         foreach (var variable in behaviour.Value)
                         {
+                            var pipeline = variable.Value.Delivery switch
+                            {
+                                NetworkDelivery.UnreliableSequenced => UnreliableSequencedPipeline,
+                                NetworkDelivery.ReliableSequenced => ReliableSequencedPipeline,
+                                _ => UnreliablePipeline
+                            };
+                            driver.BeginSend(pipeline, client.Connection, out var writer);
+                            writer.WriteByte((byte)NetworkAction.UpdateObject);
+                            writer.WriteInt(networkObject.NetworkObjectId);
+                            writer.WriteInt(behaviour.Key);
                             writer.WriteInt(variable.Key);
                             variable.Value.Serialize(ref writer);
+                            driver.EndSend(writer);
                         }
                     }
-                    driver.EndSend(writer);
                 }
             }
 

@@ -20,8 +20,6 @@ namespace Netcode.Variable
 
         private static readonly INetworkVariableSerializer<T> Serializer;
 
-        public NetworkDelivery Delivery;
-
         public bool IsChanged { get; private set; }
 
         public void AddListenerAndCall(Action<T, T> action)
@@ -43,6 +41,8 @@ namespace Netcode.Variable
         public VariablePermission ReadPermission { get; }
 
         public VariablePermission WritePermission { get; }
+
+        public NetworkDelivery Delivery { get; }
 
         private T _value;
 

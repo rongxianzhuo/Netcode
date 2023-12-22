@@ -88,7 +88,7 @@ namespace Netcode.Core
                         {
                             var client = new ClientInfo(_clientConnections.Count + 1, connection);
                             _clientConnections.Add(client);
-                            Driver.BeginSend(NetworkPipeline.Null, connection, out var writer);
+                            Driver.BeginSend(ReliableSequencedPipeline, connection, out var writer);
                             writer.WriteByte((byte)NetworkAction.ConnectionApproval);
                             writer.WriteInt(client.ClientId);
                             Driver.EndSend(writer);
