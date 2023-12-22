@@ -11,7 +11,6 @@ namespace Netcode.Core
         public event Action<int> ClientConnectEvent;
 
         public readonly NetcodeSettings Settings = new NetcodeSettings();
-        public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         private readonly ClientInfo[] _serverConnection = new []{new ClientInfo(0, default)};
 
         private float _sendMessageTime;
@@ -34,7 +33,7 @@ namespace Netcode.Core
                 ServerInfo = default;
             }
 
-            ObjectManager.Clear();
+            DestroyAllNetworkObject();
         }
 
         public void StopNetwork()
@@ -104,7 +103,7 @@ namespace Netcode.Core
 
             if (ClientId > ServerNetworkManager.ClientId)
             {
-                ObjectManager.BroadcastUpdateNetworkObject(ClientId, Driver, _serverConnection);
+                BroadcastUpdateNetworkObject(ClientId, Driver, _serverConnection);
             }
         }
 
@@ -113,13 +112,13 @@ namespace Netcode.Core
             switch (action)
             {
                 case NetworkAction.SpawnObject:
-                    ObjectManager.SpawnNetworkObject(ClientId, ref reader);
+                    SpawnNetworkObject(ClientId, ref reader);
                     break;
                 case NetworkAction.DestroyObject:
-                    ObjectManager.DestroyNetworkObject(ref reader);
+                    DestroyNetworkObject(ref reader);
                     break;
                 case NetworkAction.UpdateObject:
-                    ObjectManager.UpdateNetworkObject(ref reader);
+                    UpdateNetworkObject(ref reader);
                     break;
                 case NetworkAction.ConnectionApproval:
                     ClientId = reader.ReadInt();

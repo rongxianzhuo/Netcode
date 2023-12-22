@@ -51,7 +51,7 @@ namespace Netcode.Components
             return _changedNetworkBehaviour;
         }
 
-        internal void NetworkInit(bool isClient, NetworkObjectManager objectManager)
+        internal void NetworkInit(bool isClient, NetworkManager objectManager)
         {
             IsClient = isClient;
             foreach (var behaviour in _networkBehaviours)

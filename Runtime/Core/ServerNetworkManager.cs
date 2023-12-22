@@ -17,7 +17,6 @@ namespace Netcode.Core
         public event Action<int> ClientDisconnectEvent;
 
         public readonly NetcodeSettings Settings = new NetcodeSettings();
-        public readonly NetworkObjectManager ObjectManager = new NetworkObjectManager();
         
         private readonly List<ClientInfo> _clientConnections = new List<ClientInfo>();
         private readonly List<NetworkConnection> _pendingClientConnections = new List<NetworkConnection>();
@@ -40,7 +39,7 @@ namespace Netcode.Core
             }
             _pendingClientConnections.Clear();
             
-            ObjectManager.Clear();
+            DestroyAllNetworkObject();
             DestroyNetworkDriver();
             NetworkLoopSystem.RemoveNetworkUpdateLoop(Update);
         }
@@ -126,9 +125,9 @@ namespace Netcode.Core
 
             _sendMessageTime = Time.realtimeSinceStartup;
 
-            ObjectManager.BroadcastSpawnNetworkObject(Driver, _clientConnections);
-            ObjectManager.BroadcastUpdateNetworkObject(ClientId, Driver, _clientConnections);
-            ObjectManager.BroadcastDestroyNetworkObject(Driver, _clientConnections);
+            BroadcastSpawnNetworkObject(Driver, _clientConnections);
+            BroadcastUpdateNetworkObject(ClientId, Driver, _clientConnections);
+            BroadcastDestroyNetworkObject(Driver, _clientConnections);
         }
 
         private void HandleNetworkEvent(ClientInfo client)
@@ -164,7 +163,7 @@ namespace Netcode.Core
                 case NetworkAction.DestroyObject:
                     break;
                 case NetworkAction.UpdateObject:
-                    ObjectManager.UpdateNetworkObject(ref reader);
+                    UpdateNetworkObject(ref reader);
                     break;
                 case NetworkAction.ConnectionApproval:
                     break;
