@@ -1,17 +1,20 @@
 using Netcode.Core;
+using Netcode.Message;
 using Netcode.Variable;
 using UnityEngine;
 
 namespace Netcode.Components
-{
+{ 
     public class NetworkTransform : NetworkBehaviour
     {
 
         private readonly NetworkVariable<Vector3> _networkPosition = new NetworkVariable<Vector3>(default
-            , writePermission: VariablePermission.ServerOnly);
+            , writePermission: VariablePermission.ServerOnly
+            , delivery: NetworkDelivery.Unreliable);
 
         private readonly NetworkVariable<Vector3> _networkRotation = new NetworkVariable<Vector3>(default
-            , writePermission: VariablePermission.ServerOnly);
+            , writePermission: VariablePermission.ServerOnly
+            , delivery: NetworkDelivery.Unreliable);
 
         public float interpolateFactor = 0.15f;
         public float blinkDistance = 3;

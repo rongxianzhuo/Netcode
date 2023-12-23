@@ -62,7 +62,7 @@ namespace Netcode.Variable
         public NetworkVariable(T defaultValue
             , VariablePermission readPermission=VariablePermission.All
             , VariablePermission writePermission=VariablePermission.ServerOnly
-            , NetworkDelivery delivery=NetworkDelivery.Unreliable)
+            , NetworkDelivery delivery=NetworkDelivery.ReliableSequenced)
         {
             _value = defaultValue;
             ReadPermission = readPermission;
