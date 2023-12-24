@@ -13,6 +13,8 @@ namespace Netcode.Core
     public abstract class NetworkManager
     {
 
+        public static bool NetworkEnableSimulator;
+
         public object AttachObject;
         public INetworkPrefabLoader NetworkPrefabLoader;
         
@@ -39,9 +41,18 @@ namespace Netcode.Core
                 mode: ApplyMode.SentPacketsOnly,
                 packetDelayMs: 50);
             Driver = NetworkDriver.Create(settings);
-            UnreliablePipeline = Driver.CreatePipeline(typeof(SimulatorPipelineStage));
-            ReliableSequencedPipeline = Driver.CreatePipeline(typeof(ReliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
-            UnreliableSequencedPipeline = Driver.CreatePipeline(typeof(UnreliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
+            if (NetworkEnableSimulator)
+            {
+                UnreliablePipeline = Driver.CreatePipeline(typeof(SimulatorPipelineStage));
+                ReliableSequencedPipeline = Driver.CreatePipeline(typeof(ReliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
+                UnreliableSequencedPipeline = Driver.CreatePipeline(typeof(UnreliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
+            }
+            else
+            {
+                UnreliablePipeline = NetworkPipeline.Null;
+                ReliableSequencedPipeline = Driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
+                UnreliableSequencedPipeline = Driver.CreatePipeline(typeof(UnreliableSequencedPipelineStage));
+            }
         }
 
         protected void DestroyNetworkDriver()
